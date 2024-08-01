@@ -10,9 +10,9 @@ R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 void DrawTrackIDs(){
 
   const std::string filename = "HyperonTrees.root";
-  const int run_to_view = 7012;
-  const int subrun_to_view = 1114;
-  const int event_to_view = 55704;
+  const int run_to_view = 7003;
+  const int subrun_to_view = 217;
+  const int event_to_view = 10897;
 
   EventAssembler E(false);
   E.SetFile(filename,"Background");
@@ -88,13 +88,14 @@ void DrawTrackIDs(){
 
   }
 
+
   hyperonreco::VFitter fitter(true);
   fitter.SetEvent(run_to_view,subrun_to_view,event_to_view);   
   fitter.SetROI(roi_size_ch,roi_size_tick,TVector3(pfp.X_NoSC,pfp.Y_NoSC,pfp.Z_NoSC));
-  fitter.AddData(m_trackid_hits.at(proton_trackid));
-  fitter.AddData(m_trackid_hits.at(pion_trackid));
+  if(m_trackid_hits.find(proton_trackid) != m_trackid_hits.end()) fitter.AddData(m_trackid_hits.at(proton_trackid));
+  if(m_trackid_hits.find(pion_trackid) != m_trackid_hits.end()) fitter.AddData(m_trackid_hits.at(pion_trackid));
   fitter.SetGuess(v);
-  fitter.DoFitGridSearch3(v,10000); 
+  fitter.DoFitGridSearch3(v,10000);
 
 }
 

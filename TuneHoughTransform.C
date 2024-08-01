@@ -11,8 +11,8 @@ void TuneHoughTransform(){
 
   const std::string filename = "HyperonTrees.root";
   const int run_to_view = 7003;
-  const int subrun_to_view = 1668;
-  const int event_to_view = 83430;
+  const int subrun_to_view = 217;
+  const int event_to_view = 10897;
 
   EventAssembler E(false);
   E.SetFile(filename,"Background");
@@ -41,7 +41,6 @@ void TuneHoughTransform(){
   }
 
   std::cout << "Proton TrackID: " << proton_trackid << "  Pion TrackID: " << pion_trackid << std::endl;
-
 
   // Select the PFP we want to use the hits from
   RecoParticle pfp = e.ShowerlikePrimaryDaughters.at(0);
@@ -84,9 +83,9 @@ void TuneHoughTransform(){
   std::pair<double,double> grouping_range = {3,8};
   std::pair<double,double> max_neighbour_dist_range = {0.5,10.0};
 
-  for(int i=0;i<1000;i++){
+  for(int i=0;i<2000;i++){
 
-    std::vector<std::vector<hyperonreco::HoughTransformPoint>> clusters;
+    //std::vector<std::vector<hyperonreco::HoughTransformPoint>> clusters;
 
     double theta_bin_size = r->Uniform(theta_bin_size_range.first,theta_bin_size_range.second);
     double r_bin_size = r->Uniform(r_bin_size_range.first,r_bin_size_range.second);
@@ -100,6 +99,10 @@ void TuneHoughTransform(){
     std::cout << "r_bin_size=" << r_bin_size << std::endl;
     std::cout << "peak_size=" << peak_size << std::endl;
     std::cout << "grouping=" << grouping << std::endl;
+
+    // Get the tune metrics
+    double three_plane_score = 0.0; 
+
     std::cout << "max_neighbour_dist=" << max_neighbour_dist << std::endl;
 
     for(int i_pl=0;i_pl<3;i_pl++){
@@ -119,63 +122,22 @@ void TuneHoughTransform(){
       transformer.SetMaxNeighbourDist(max_neighbour_dist);
 
       transformer.MakeTransform2();
-      clusters.push_back(transformer.MakeClusters());
+      //clusters.push_back(transformer.MakeClusters());
+      std::pair<double,double> performance = transformer.GetPerformanceMetrics();
+      three_plane_score += performance.first*performance.second;      
 
     }
 
-    if(clusters.at(0).size() == 0 || clusters.at(1).size() == 0 || clusters.at(2).size() == 0) continue; 
+    std::cout << "Score=" << three_plane_score << std::endl;
 
-    // Get the tune metrics
-    double ThreePlane_Score = 0.0; 
-    for(size_t i_pl=0;i_pl<3;i_pl++){
-
-      std::cout << "Plane " << i_pl << std::endl;
-
-      for(hyperonreco::HoughTransformPoint cluster : clusters.at(i_pl)){
-
-        // Make map of how many hits belong to each trackid in the cluster, and which trackid has the most hits
-        std::map<int,int> m_cluster_trackid_hits;
-        for(hyperonreco::HitLite hit : cluster.Hits){
-          if(m_cluster_trackid_hits.find(hit.TrackID) == m_cluster_trackid_hits.end()) m_cluster_trackid_hits[hit.TrackID] = 0;
-          m_cluster_trackid_hits[hit.TrackID]++; 
-        }
-
-        // Record which trackid had the most hits in this cluster
-        std::map<int,int>::iterator it;
-        int trackid_mosthits = -1;
-        int trackid_mosthits_hits = 0;
-        for(it = m_cluster_trackid_hits.begin();it != m_cluster_trackid_hits.end();it++){
-          if(it->second > trackid_mosthits_hits){
-            trackid_mosthits = it->first;
-            trackid_mosthits_hits = it->second;
-          }
-        }
-
-        // Calculate how pure and complete the cluster is 
-        double purity = (double)trackid_mosthits_hits/cluster.Hits.size();
-        double completeness = (double)trackid_mosthits_hits/m_trackid_hits.at(trackid_mosthits).at(i_pl);
-
-        std::cout << "Cluster hits=" << cluster.Hits.size() << " dominant trackid=" << trackid_mosthits << " dominant trackid hits=" << trackid_mosthits_hits << " purity=" << purity << " completeness=" << completeness << std::endl; 
-
-        if(trackid_mosthits == proton_trackid || trackid_mosthits == pion_trackid){
-
-          ThreePlane_Score += purity*completeness;
-
-        }
-
-      }
-
-    }
-
-    std::cout << "Score=" << ThreePlane_Score << std::endl;
-
-    if(ThreePlane_Score > Best_Score){
-      Best_Score = ThreePlane_Score;
+    if(three_plane_score > Best_Score){
+      Best_Score = three_plane_score;
       Best_Tune = i; 
       Best_theta_bin_size = theta_bin_size; 
       Best_r_bin_size = r_bin_size; 
       Best_peak_size = peak_size; 
       Best_grouping = grouping; 
+      Best_MaxNeighbourDist = max_neighbour_dist; 
     }
 
   }
@@ -197,6 +159,8 @@ void TuneHoughTransform(){
     transformer.SetThetaBinSize(Best_theta_bin_size);
     transformer.SetPeakSize(Best_peak_size);
     transformer.SetPointGrouping(Best_grouping);
+    transformer.SetMaxNeighbourDist(Best_MaxNeighbourDist);
+
     transformer.SetEvent(run_to_view,subrun_to_view,event_to_view);   
 
     transformer.MakeTransform2();

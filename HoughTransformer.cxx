@@ -37,6 +37,14 @@ HoughTransformer::HoughTransformer(std::vector<HitLite> hits,int plane,double or
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+HoughTransformer::~HoughTransformer(){
+
+  if(h_Transform != nullptr) delete h_Transform;
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void HoughTransformer::SetEvent(int run,int subrun,int event){
 
   Run = run;
@@ -96,7 +104,7 @@ void HoughTransformer::SetMaxNeighbourDist(double dist){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void HoughTransformer::SubtractOffset(std::vector<HitLite>& hits){
+void HoughTransformer::SubtractOffset(std::vector<HitLite>& hits) const {
 
   for(HitLite& hit : hits){
 
@@ -109,7 +117,7 @@ void HoughTransformer::SubtractOffset(std::vector<HitLite>& hits){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void HoughTransformer::RestoreOffset(std::vector<HitLite>& hits){
+void HoughTransformer::RestoreOffset(std::vector<HitLite>& hits) const {
 
   for(HitLite& hit : hits){
     hit.Channel = hit.Channel + Origin_Channel;
@@ -189,6 +197,8 @@ std::vector<HitLite> HoughTransformer::FindNearestNeighbours(int point,const std
 
 void HoughTransformer::MakeTransform2(){
 
+  Transform.clear();
+
   std::vector<std::pair<double,double>> transform;
   double theta_min=3.1415,theta_max=-3.1415;
   double r_min=1e10,r_max=-1e10;
@@ -220,8 +230,7 @@ void HoughTransformer::MakeTransform2(){
     Transform.back().Hits = nearest_neighbors;;
 
   }
-
-  //h_Transform = new TH2D("h_transform",";r;theta;",50,r_min,r_max,50,-3.1415,3.1415);
+  if(h_Transform != nullptr) delete h_Transform;
   h_Transform = new TH2D("h_transform",";r;theta;",std::floor((r_max-r_min)/RBinSize),r_min,r_max,std::floor((theta_max-theta_min)/ThetaBinSize),theta_min,theta_max);
   for(std::pair<double,double> result : transform)
     h_Transform->Fill(result.first,result.second);
@@ -356,7 +365,7 @@ void HoughTransformer::DrawFits(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::vector<HoughTransformPoint> HoughTransformer::MakeClusters(){
+std::vector<HoughTransformPoint> HoughTransformer::MakeClusters() const {
 
   std::vector<HoughTransformPoint> peaks = FindPeaks();
 
@@ -364,6 +373,8 @@ std::vector<HoughTransformPoint> HoughTransformer::MakeClusters(){
     RestoreOffset(peak.Hits);
 
   if(Draw){
+
+    std::cout << "Peaks=" << peaks.size() << std::endl;
 
     TMultiGraph *g = new TMultiGraph();
     std::vector<TGraph*> g_cluster_v;
@@ -383,7 +394,7 @@ std::vector<HoughTransformPoint> HoughTransformer::MakeClusters(){
       g_cluster_v.back()->SetMarkerStyle(20);
       g->Add(g_cluster_v.back());
       ctr++;
-      if(ctr > 4) break;
+      //if(ctr > 4) break;
     }
 
 
@@ -400,6 +411,57 @@ std::vector<HoughTransformPoint> HoughTransformer::MakeClusters(){
   return peaks;
     
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+std::pair<double,double> HoughTransformer::GetPerformanceMetrics() const {
+
+  std::vector<HoughTransformPoint> clusters = MakeClusters();
+
+  // Record how many hits belong to each trackid
+  std::map<int,int> m_trackid_hits;
+  std::map<int,double> m_trackid_completeness;
+  for(HitLite hit : Hits){
+    if(m_trackid_hits.find(hit.TrackID) == m_trackid_hits.end()){
+      m_trackid_hits[hit.TrackID] = 0;
+      m_trackid_completeness[hit.TrackID] = 0.0;
+    }
+    m_trackid_hits.at(hit.TrackID)++;
+  }
+
+  // Calculate the mean purity of the clusters
+  //std::cout << "Cluster purities:" << std::endl;
+  double mean_purity = 0;
+  for(HoughTransformPoint cluster : clusters){
+      std::pair<int,int> dominant_trackid = cluster.GetDominantTrackID();
+      double purity = (double)dominant_trackid.second/cluster.Hits.size();
+      //std::cout << "Purity=" << purity << std::endl;
+      m_trackid_completeness.at(dominant_trackid.first) = std::max((double)dominant_trackid.second/m_trackid_hits.at(dominant_trackid.first),m_trackid_completeness.at(dominant_trackid.first));
+      mean_purity += purity;
+  }
+  mean_purity /= clusters.size();
+
+  //std::cout << "TrackID Completenesses:" << std::endl;
+  std::map<int,double>::iterator it;
+  double mean_completeness = 0;
+  int ctr = 0;
+  for(it = m_trackid_completeness.begin();it != m_trackid_completeness.end();it++){
+    if(m_trackid_hits.at(it->first) < 5) continue;
+    //std::cout << it->first << "  " << it->second << std::endl;
+    ctr++;
+    mean_completeness += it->second;
+  }
+
+  mean_completeness /= ctr;
+
+  std::cout << "Mean purity = " << mean_purity << " mean completeness = " << mean_completeness << std::endl;
+
+  return std::make_pair(mean_purity,mean_completeness);
+ 
+}
+
+
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -42,7 +42,7 @@ TGraph* Make2DGraph(const std::vector<HitLite>& hits,int color,int marker){
   g->SetMarkerColor(color);
   g->SetLineColor(color);
   g->SetMarkerStyle(Markers[marker]);
-  g->SetMarkerSize(0.5);
+  g->SetMarkerSize(0.4);
 
   return g;
 

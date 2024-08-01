@@ -574,12 +574,12 @@ double VFitter::HitLineSeparation2(const HitLite& hit,const LineWireTick2& line)
 
 bool VFitter::DoFitGridSearch3(FittedV& fittedv,int points){
 
-  std::cout << "Starting grid search 2" << std::endl;
+  std::cout << "Starting grid search 3" << std::endl;
 
   for(size_t i_pl=0;i_pl<3;i_pl++) RemoveOffset(Hits.at(i_pl),InitialGuess.Vertex,i_pl);
   TRandom2* r = new TRandom2();
 
-  std::pair<double,double> vertex_range = {-3.0,3.0};
+  std::pair<double,double> vertex_range = {-5.0,5.0};
 
   double bestfit_score=1e10;
   FittedV bestfit_v;
@@ -648,6 +648,12 @@ bool VFitter::DoFitGridSearch3(FittedV& fittedv,int points){
   fittedv = bestfit_v;
   fittedv.Vertex = bestfit_v.Vertex + InitialGuess.Vertex;
   //FitScore2(Channel_v,Tick_v,Width_v,fittedv,true); 
+
+  std::cout << "Best Fit:" << std::endl;
+  std::cout << "Vertex: " << bestfit_v.Vertex.X() << "  " << bestfit_v.Vertex.Y() <<"  " << bestfit_v.Vertex.Z() << std::endl;
+  std::cout << "Arm 1: theta=" << bestfit_v.Arm1Theta << "  phi=" << bestfit_v.Arm1Phi << std::endl;
+  std::cout << "Arm 2: theta=" << bestfit_v.Arm2Theta << "  phi=" << bestfit_v.Arm2Phi << std::endl;
+  std::cout << "Score=" << bestfit_score << std::endl;
 
   delete r;
 

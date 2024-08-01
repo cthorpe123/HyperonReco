@@ -31,12 +31,13 @@ namespace hyperonreco {
       public:
 
         HoughTransformer(std::vector<HitLite> hits,int plane,double origin_channel,double origin_tick,bool draw=false);
+        ~HoughTransformer();
         void MakeTransform2();
         std::vector<HoughTransformPoint> FindPeaks() const;
         void DrawFits();
-        void SubtractOffset(std::vector<HitLite>& hits);
-        void RestoreOffset(std::vector<HitLite>& hits);
-        std::vector<HoughTransformPoint> MakeClusters();
+        void SubtractOffset(std::vector<HitLite>& hits) const;
+        void RestoreOffset(std::vector<HitLite>& hits) const;
+        std::vector<HoughTransformPoint> MakeClusters() const;
         
         void SetRBinSize(double size);
         void SetThetaBinSize(double size);
@@ -46,6 +47,8 @@ namespace hyperonreco {
 
         void SetEvent(int run,int subrun,int event);
         void SetTuneID(int tuneid);
+
+        std::pair<double,double> GetPerformanceMetrics() const;
 
       private:
 
@@ -77,6 +80,7 @@ namespace hyperonreco {
 
         ROOT::Math::Functor Func;
         std::unique_ptr<ROOT::Math::Minimizer> Minimizer = nullptr;
+        
 
   };
 

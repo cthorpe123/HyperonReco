@@ -7,7 +7,7 @@ namespace hyperonreco {
   struct HitLite {
 
     HitLite(int plane,double channel,double tick,double width,int number,int trackid=-1) :
-        Plane(plane),Channel(channel),Tick(tick),Width(width),Number(number),TrackID(trackid)
+      Plane(plane),Channel(channel),Tick(tick),Width(width),Number(number),TrackID(trackid)
     {}
 
     int Plane;
@@ -35,7 +35,7 @@ namespace hyperonreco {
 
   }
 
- inline void KeepHitsInROI(TVector3 point,std::vector<std::vector<HitLite>>& hits,double roi_size_ch,double roi_size_tick){
+  inline void KeepHitsInROI(TVector3 point,std::vector<std::vector<HitLite>>& hits,double roi_size_ch,double roi_size_tick){
     std::vector<std::vector<HitLite>> hits_tmp(3);
     for(int i_pl=0;i_pl<3;i_pl++){
       std::pair<double,double> vertex_ch_tick = WireTick(point,i_pl); 
@@ -58,6 +58,30 @@ namespace hyperonreco {
     double Theta;
     int Height;
     std::vector<HitLite> Hits;
+
+    // get trackid in the most hits in this cluster and how many hits it appears in
+    std::pair<int,int> GetDominantTrackID(){
+
+      std::map<int,int> m_trackid_hits;
+      for(HitLite hit : Hits){
+        if(m_trackid_hits.find(hit.TrackID) == m_trackid_hits.end())
+          m_trackid_hits[hit.TrackID] = 0;
+        m_trackid_hits.at(hit.TrackID)++;
+      }
+
+      std::map<int,int>::iterator it;
+      int max_hits = 0;    
+      int dominant_trackid = 0;
+      for(it = m_trackid_hits.begin();it != m_trackid_hits.end();it++){
+        if(it->second > max_hits){
+          max_hits = it->second;
+          dominant_trackid = it->first;
+        } 
+      }
+
+      return std::make_pair(dominant_trackid,max_hits);
+
+    }
 
   };
 
