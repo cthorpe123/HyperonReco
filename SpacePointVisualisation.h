@@ -1,8 +1,11 @@
+#ifndef _SpacePointVisualisation_h_
+#define _SpacePointVisualisation_h_
+
 #include "TGraph2D.h"
 #include "RecoParticle.h"
-#include "VFitter.h"
 #include "FittedV.h"
 #include "Position_To_Wire.h"
+#include "Objects.h"
 
 namespace hyperonreco {
 
@@ -24,11 +27,20 @@ TGraph2D* MakeGraph(std::vector<double> X,std::vector<double> Y,std::vector<doub
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-TGraph* Make2DGraph(std::vector<double> channel,std::vector<double> tick,std::vector<double> width,int color,int marker){
+TGraph* Make2DGraph(const std::vector<HitLite>& hits,int color,int marker){
+
+  std::vector<double> channel,tick,width;
+
+  for(HitLite hit : hits){
+    channel.push_back(hit.Channel);
+    tick.push_back(hit.Tick);
+    width.push_back(hit.Width);
+  }
 
   TGraphErrors* g = new TGraphErrors(channel.size(),&(channel[0]),&(tick[0]),0,&(width[0]));
   g->SetName(("graph2D_"+std::to_string(color)).c_str());
   g->SetMarkerColor(color);
+  g->SetLineColor(color);
   g->SetMarkerStyle(Markers[marker]);
   g->SetMarkerSize(0.5);
 
@@ -36,29 +48,6 @@ TGraph* Make2DGraph(std::vector<double> channel,std::vector<double> tick,std::ve
 
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-std::pair<TGraph*,TGraph*> Make2DVGraphs(const FittedV& v,int i_pl,int color){
-
-   TGraph* g1 = new TGraph(2);
-   TGraph* g2 = new TGraph(2);
-   g1->SetName("fit_graph2D_1");
-   g2->SetName("fit_graph2D_2");
-   LineWireTick2 line_1 = v.GetArm1_2D2(i_pl);
-   LineWireTick2 line_2 = v.GetArm2_2D2(i_pl);
-
-   g1->SetPoint(0,line_1.Start.X(),line_1.Start.Y());
-   g2->SetPoint(0,line_2.Start.X(),line_2.Start.Y());
-
-   g1->SetPoint(1,line_1.Start.X()+line_1.Direction.X()*200,line_1.Start.Y()+line_1.Direction.Y()*200);
-   g2->SetPoint(1,line_2.Start.X()+line_2.Direction.X()*200,line_2.Start.Y()+line_2.Direction.Y()*200);
-
-   g1->SetLineColor(color); 
-   g2->SetLineColor(color); 
-
-   return std::make_pair(g1,g2);
-  
-}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -97,74 +86,6 @@ void DrawGraphs(const std::vector<TGraph2D*>& graph_v,std::pair<TGraph2D*,TGraph
 
   for(size_t i_g=0;i_g<graph_v.size();i_g++)
     graph_v.at(i_g)->Draw("P same");
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void Draw2DGraphs(const std::vector<std::vector<TGraph*>> graph_v,FittedV* fit=nullptr){
-
-  for(int i_pl=0;i_pl<3;i_pl++){
-
-    double min_x=1e6,max_x=-1e6;
-    double min_y=1e6,max_y=-1e6;
-
-    if(!graph_v.at(i_pl).size()){
-      std::cout << "Event contains no PFParticles, not drawing" << std::endl;
-      return;
-    }
-
-    std::cout << "Event contains " << graph_v.at(i_pl).size() << " PFParticles" << std::endl;
-
-    bool has_points=false;
-    for(TGraph* g : graph_v.at(i_pl)){
-      if(g->GetN() > 0) has_points = true;
-      for(int i_p=0;i_p<g->GetN();i_p++){
-        min_x = std::min(min_x,g->GetX()[i_p]);         
-        max_x = std::max(max_x,g->GetX()[i_p]);         
-        min_y = std::min(min_y,g->GetY()[i_p]);         
-        max_y = std::max(max_y,g->GetY()[i_p]);         
-      }       
-    }
-
-    if(!has_points) continue;
-
-    std::pair<TGraph*,TGraph*> fit_arms = {nullptr,nullptr};
-    if(fit != nullptr){
-      fit_arms = Make2DVGraphs(*fit,i_pl,1);
-      fit_arms.first->SetLineColor(2);
-      fit_arms.second->SetLineColor(3);
-      fit_arms.first->Draw("L same");
-      fit_arms.second->Draw("L same");
-      max_x = std::max(fit_arms.first->GetX()[0],max_x); 
-      min_x = std::min(fit_arms.first->GetX()[0],min_x); 
-      max_y = std::max(fit_arms.first->GetY()[0],max_y); 
-      min_y = std::min(fit_arms.first->GetY()[0],min_y); 
-    }
-
-    double width_x = (max_x-min_x)/2;
-    double width_y = (max_y-min_y)/2;
-
-    TCanvas* c = new TCanvas("C_2d","C_2d");
-
-    TH2D* h = new TH2D("h_2d_dummy",";Channel;Tick",1,min_x-width_x/10,max_x+width_x/10,1,min_y-width_y/10,max_y+width_y/10);
-    h->Draw();
-    h->SetStats(0);
-
-    for(size_t i_g=0;i_g<graph_v.at(i_pl).size();i_g++)
-      graph_v.at(i_pl).at(i_g)->Draw("P same");
-
-    if(fit != nullptr){
-      fit_arms.first->Draw("L same");
-      fit_arms.second->Draw("L same");
-    }
-
-    c->Print(("Plane"+std::to_string(i_pl)+".png").c_str());
-
-    delete h;
-    c->Close();
-
-  }
-
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -222,25 +143,31 @@ FittedV MakeFittedVGuessTrack(const RecoParticle& track){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void KeepHitsInROI(TVector3 point,std::vector<double>& channels,std::vector<double>& ticks,std::vector<double>& widths,double roi_size_ch,double roi_size_tick,int i_pl){
+void KeepHitsInROI(TVector3 point,std::vector<double>& channels,std::vector<double>& ticks,std::vector<double>& widths,std::vector<int>& pdgs,std::vector<int>& trackids,double roi_size_ch,double roi_size_tick,int i_pl){
 
   std::pair<double,double> vertex_ch_tick = WireTick(point,i_pl); 
 
   std::vector<double> channels_tmp;
   std::vector<double> ticks_tmp;
   std::vector<double> widths_tmp;
+  std::vector<int> pdgs_tmp;
+  std::vector<int> trackids_tmp;
 
   for(size_t i_h=0;i_h<channels.size();i_h++){
     if(abs(channels.at(i_h) - vertex_ch_tick.first) < roi_size_ch && abs(ticks.at(i_h) - vertex_ch_tick.second) < roi_size_tick){
       channels_tmp.push_back(channels.at(i_h));
       ticks_tmp.push_back(ticks.at(i_h));
       widths_tmp.push_back(widths.at(i_h));
+      pdgs_tmp.push_back(pdgs.at(i_h));
+      trackids_tmp.push_back(trackids.at(i_h));
     }
   }
 
   channels = channels_tmp;
   ticks = ticks_tmp;
   widths = widths_tmp;
+  pdgs = pdgs_tmp;
+  trackids = trackids_tmp;
 
 }
 
@@ -302,4 +229,6 @@ std::vector<std::pair<double,double>> FindPeaksTH2D(const TH2D* h){
 }
 
 }
+
+#endif
 

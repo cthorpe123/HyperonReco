@@ -22,45 +22,27 @@
 
 // local includes
 #include "Position_To_Wire.h" 
+#include "Objects.h"
 
 namespace hyperonreco {
-
-  struct HoughTransformPoint {
-
-    HoughTransformPoint(int plane,double r,double theta) :
-      Plane(plane),R(r),Theta(theta)
-    {}
-
-    int Plane;
-    double R;
-    double Theta;
-
-    int Height;
-
-    std::vector<double> Channels;
-    std::vector<double> Ticks;
-    std::vector<double> Widths;
-    std::vector<int> PointNo; // int used to uniquely identify every point - used to avoid duplicate points later
-
-  };
 
   class HoughTransformer {
 
       public:
 
-        HoughTransformer(std::vector<double> channels,std::vector<double> ticks,std::vector<double> widths,int plane,double origin_channel,double origin_tick);
-        void MakeTransform();
+        HoughTransformer(std::vector<HitLite> hits,int plane,double origin_channel,double origin_tick,bool draw=false);
         void MakeTransform2();
         std::vector<HoughTransformPoint> FindPeaks() const;
         void DrawFits();
-        void SubtractOffset(std::vector<double>& channels,std::vector<double>& ticks,std::vector<double>& widths);
-        void RestoreOffset(std::vector<double>& channels,std::vector<double>& ticks,std::vector<double>& widths);
+        void SubtractOffset(std::vector<HitLite>& hits);
+        void RestoreOffset(std::vector<HitLite>& hits);
         std::vector<HoughTransformPoint> MakeClusters();
         
         void SetRBinSize(double size);
         void SetThetaBinSize(double size);
         void SetPeakSize(int size);
         void SetPointGrouping(int size);
+        void SetMaxNeighbourDist(double dist);
 
         void SetEvent(int run,int subrun,int event);
         void SetTuneID(int tuneid);
@@ -69,26 +51,26 @@ namespace hyperonreco {
 
         int Run,Subrun,Event;
         int TuneID = 0;
+        std::string RSE;
+        bool Draw;
 
-        std::vector<double> Channels_v;
-        std::vector<double> Ticks_v;
-        std::vector<double> Widths_v;
+        std::vector<HitLite> Hits;
         const int Plane;
         const double Origin_Channel;
         const double Origin_Tick;
 
+        // Tuning parameters
         double RBinSize = 1;
         double ThetaBinSize = 0.1;
         int PeakSize = 2;
         int PointGrouping = 3;
+        double MaxNeighbourDist2 = 5.0;
 
-        std::vector<double> Channels_test;
-        std::vector<double> Ticks_test;
+        std::vector<HitLite> Hits_test;
 
-        std::vector<int> FindNearestNeighbours(int point,const std::vector<double>& channels,const std::vector<double>& ticks,int num) const;
-
-        double Dist(double channel,double tick,double r, double theta) const;
-        std::pair<double,double> GetLine(std::vector<double> channels,std::vector<double> ticks);
+        std::vector<HitLite> FindNearestNeighbours(int point,const std::vector<HitLite>& hits,int num) const;
+        double Dist(const HitLite& hit,double r, double theta) const;
+        std::pair<double,double> GetLine(const std::vector<HitLite>& hits);
 
         TH2D* h_Transform = nullptr;
         std::vector<HoughTransformPoint> Transform;

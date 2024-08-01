@@ -29,12 +29,15 @@
 #include "TGraphErrors.h"
 
 // Local includes
+//#include "RecoParticle.h"
 #ifdef _InsideLArSoft_ 
 #include "ubana/HyperonProduction/Alg/Position_To_Wire.h"
 #else 
 #include "Position_To_Wire.h" 
 #endif
 #include "FittedV.h"
+#include "HoughTransformer.h"
+#include "Objects.h"
 
 namespace hyperonreco {
 
@@ -42,11 +45,13 @@ namespace hyperonreco {
 
     public:
 
-      VFitter();
+      VFitter(bool draw=false);
 
       void Reset();
-      void AddData(const std::vector<std::vector<double>>& channel_v,const std::vector<std::vector<double>>& tick_v,const std::vector<std::vector<double>>& width_v);
+      void AddData(const std::vector<std::vector<HitLite>>& hits);
+      void AddData(const HoughTransformPoint& p);
       void SetGuess(const FittedV& fittedv);
+      void SetEvent(int run,int subrun,int event);
 
       #ifdef _InsideLArSoft_
       FittedV DoFit(TVector3 start,std::map<art::Ptr<recob::SpacePoint>,art::Ptr<recob::Hit>> hitspacepointhap) const;
@@ -55,19 +60,21 @@ namespace hyperonreco {
       bool DoFit(FittedV& fittedv);
       bool DoFitGridSearch(FittedV& fittedv,int points);
       bool DoFitGridSearch2(FittedV& fittedv,int points);
+      bool DoFitGridSearch3(FittedV& fittedv,int points);
       void SetActivePlanes(std::vector<int> i_pl);
 
       void SetROI(double roi_ch,double roi_tick,TVector3 center);
       void SetOutlierCut(double outliercut);
       void SetFitTune(double fittune);
-      void RemoveOutliers();
-      void RemoveOffset(std::vector<double>& channels,std::vector<double>& ticks,std::vector<double>& widths,TVector3 origin,int plane);
-      void RestoreOffset(std::vector<double>& channels,std::vector<double>& ticks,std::vector<double>& widths,TVector3 origin,int plane);
-
-
-      TH2D* HoughTransform(std::vector<double> channels,std::vector<double> ticks,int i_pl);
+      //void RemoveOutliers();
+      void RemoveOffset(std::vector<HitLite>& hits,TVector3 origin,int plane);
+      void RestoreOffset(std::vector<HitLite>& hits,TVector3 origin,int plane);
 
     private:
+
+      int Run,Subrun,Event;
+      std::string RSE;
+      bool Draw = false;
 
       double ROIChannel = 100;
       double ROITick = 1500;
@@ -76,7 +83,7 @@ namespace hyperonreco {
       double OutlierCut = 50;
       double FitTune = 1;
 
-      std::vector<std::vector<double>> Channel_v,Tick_v,Width_v;
+      std::vector<std::vector<HitLite>> Hits;
  
       FittedV InitialGuess;
       bool InitialGuessSet = false;
@@ -86,10 +93,12 @@ namespace hyperonreco {
       std::pair<double,int> FitScore(std::vector<art::Ptr<recob::Hit>> hit_v,FittedV fittedv);
       #endif
 
-      double HitLineSeparation(const double& channel,const double& tick,const double& width,const LineWireTick2& line);
-      std::pair<double,int> FitScore(const std::vector<std::vector<double>>& channel_v,const std::vector<std::vector<double>>& tick_v,const std::vector<std::vector<double>>& width_v,FittedV& fittedv,bool verbose=false);
-      std::pair<double,int> FitScore2(const std::vector<std::vector<double>>& channel_v,const std::vector<std::vector<double>>& tick_v,const std::vector<std::vector<double>>& width_v,FittedV& fittedv,bool verbose=false);
-      double HitLineSeparation2(const double& channel,const double& tick,const double& width,const LineWireTick2& line);
+      double HitLineSeparation(const HitLite& hit,const LineWireTick2& line);
+      std::pair<double,int> FitScore(const std::vector<std::vector<HitLite>>& hits,FittedV& fittedv,bool verbose=false);
+      std::pair<double,int> FitScore2(const std::vector<std::vector<HitLite>>& hits,FittedV& fittedv,bool verbose=false);
+      double HitLineSeparation2(const HitLite& hit,const LineWireTick2& line);
+
+      void DrawFit(const FittedV& v) const;
 
   };
 

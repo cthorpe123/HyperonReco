@@ -18,6 +18,7 @@
 #include "Math/Minimizer.h"
 #include "Math/Functor.h"
 #include "Math/Factory.h"
+#include "TGraph.h"
 
 // Local includes
 #ifdef _InsideLArSoft_ 
@@ -146,6 +147,8 @@ namespace hyperonreco {
       std::vector<art::Ptr<recob::Hit>> Hits;
       std::map<art::Ptr<recob::Hit>,art::Ptr<recob::SpacePoint>> HitSpacePointMap; 
       #endif
+
+      std::pair<TGraph*,TGraph*> Make2DVGraphs(int i_pl) const;
 
   };
 
