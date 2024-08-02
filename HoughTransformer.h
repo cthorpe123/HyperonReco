@@ -45,14 +45,14 @@ namespace hyperonreco {
         void SetPointGrouping(int size);
         void SetMaxNeighbourDist(double dist);
 
-        void SetEvent(int run,int subrun,int event);
+        void SetEvent(int run,int subrun,int event,int pfp=0);
         void SetTuneID(int tuneid);
 
         std::pair<double,double> GetPerformanceMetrics() const;
 
       private:
 
-        int Run,Subrun,Event;
+        int Run,Subrun,Event,Pfp;
         int TuneID = 0;
         std::string RSE;
         bool Draw;

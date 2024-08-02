@@ -45,12 +45,13 @@ HoughTransformer::~HoughTransformer(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void HoughTransformer::SetEvent(int run,int subrun,int event){
+void HoughTransformer::SetEvent(int run,int subrun,int event,int pfp){
 
   Run = run;
   Subrun = subrun;
   Event = event;
-  RSE = std::to_string(run) + "_" + std::to_string(subrun) + "_" + std::to_string(event);
+  Pfp = pfp;
+  RSE = std::to_string(run) + "_" + std::to_string(subrun) + "_" + std::to_string(event) + "_" + std::to_string(Pfp);
 
 }
 
@@ -155,6 +156,8 @@ std::pair<double,double> HoughTransformer::GetLine(const std::vector<HitLite>& h
 
 std::vector<HitLite> HoughTransformer::FindNearestNeighbours(int point,const std::vector<HitLite>& hits,int num) const {
 
+  if(hits.size()-1 < num) return {}; 
+
   std::vector<HitLite> ordered_hits;
   std::vector<double> dist_v;
 
@@ -184,11 +187,11 @@ std::vector<HitLite> HoughTransformer::FindNearestNeighbours(int point,const std
 
   }
 
-
   // if most distant point is more than x cm away, return empty vector 
   if(dist_v.at(num-1) > MaxNeighbourDist2) return {};
 
   std::vector<HitLite> nearest(ordered_hits.begin(),ordered_hits.begin()+num);
+
   return nearest; 
 
 }
@@ -198,26 +201,28 @@ std::vector<HitLite> HoughTransformer::FindNearestNeighbours(int point,const std
 void HoughTransformer::MakeTransform2(){
 
   Transform.clear();
+  if(h_Transform != nullptr){
+    delete h_Transform;
+    h_Transform = nullptr;
+  }
 
   std::vector<std::pair<double,double>> transform;
   double theta_min=3.1415,theta_max=-3.1415;
   double r_min=1e10,r_max=-1e10;
 
   for(size_t i=0;i<Hits.size();i++){
-        
+      
     std::vector<HitLite> nearest_neighbors = FindNearestNeighbours(i,Hits,PointGrouping); 
 
     if(!nearest_neighbors.size()) continue;
 
     std::pair<double,double> line = GetLine(nearest_neighbors);
-
-/*    
+     
+    /*
     std::cout << std::endl;
-    std::cout << Channels_v.at(i) << "  " << Ticks_v.at(i) << std::endl; 
-    std::cout << Channels_v.at(nearest_i) << "  " << Ticks_v.at(nearest_i) << std::endl; 
-    std::cout << Channels_v.at(second_nearest_i) << "  " << Ticks_v.at(second_nearest_i) << std::endl; 
+    for(HitLite hit : nearest_neighbors) std::cout << hit.Channel << "  " << hit.Tick << std::endl;
     std::cout << line.first << "  " << line.second << std::endl;
-  */ 
+    */
 
     r_min = std::min(r_min,line.first);
     r_max = std::max(r_max,line.first);
@@ -230,11 +235,13 @@ void HoughTransformer::MakeTransform2(){
     Transform.back().Hits = nearest_neighbors;;
 
   }
-  if(h_Transform != nullptr) delete h_Transform;
+
+  if(!Transform.size()) return;
+
   h_Transform = new TH2D("h_transform",";r;theta;",std::floor((r_max-r_min)/RBinSize),r_min,r_max,std::floor((theta_max-theta_min)/ThetaBinSize),theta_min,theta_max);
   for(std::pair<double,double> result : transform)
     h_Transform->Fill(result.first,result.second);
-
+/*
   if(Draw){
     TCanvas* c = new TCanvas("c","c");
     h_Transform->Draw("colz");
@@ -242,14 +249,16 @@ void HoughTransformer::MakeTransform2(){
     c->Print(("Plots/Event_" + RSE + "_HT_Plane" + std::to_string(Plane) + "_Tune_" + std::to_string(TuneID) + ".png").c_str());
     delete c;
   }  
-
+*/
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 std::vector<HoughTransformPoint> HoughTransformer::FindPeaks() const {
-  
+ 
   std::vector<HoughTransformPoint> results;
+
+  if(h_Transform == nullptr) return results;
 
   // Identify any bins taller than all of their neighbours
   for(int i_bx=1;i_bx<h_Transform->GetNbinsX()+1;i_bx++){
@@ -360,7 +369,6 @@ void HoughTransformer::DrawFits(){
 
   delete c;
 
-
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -373,8 +381,6 @@ std::vector<HoughTransformPoint> HoughTransformer::MakeClusters() const {
     RestoreOffset(peak.Hits);
 
   if(Draw){
-
-    std::cout << "Peaks=" << peaks.size() << std::endl;
 
     TMultiGraph *g = new TMultiGraph();
     std::vector<TGraph*> g_cluster_v;
@@ -397,7 +403,6 @@ std::vector<HoughTransformPoint> HoughTransformer::MakeClusters() const {
       //if(ctr > 4) break;
     }
 
-
     TCanvas* c = new TCanvas("c","c");
 
     g->Draw("AP");
@@ -417,6 +422,8 @@ std::vector<HoughTransformPoint> HoughTransformer::MakeClusters() const {
 std::pair<double,double> HoughTransformer::GetPerformanceMetrics() const {
 
   std::vector<HoughTransformPoint> clusters = MakeClusters();
+
+  if(!clusters.size()) return std::make_pair(0,0);
 
   // Record how many hits belong to each trackid
   std::map<int,int> m_trackid_hits;
@@ -452,16 +459,15 @@ std::pair<double,double> HoughTransformer::GetPerformanceMetrics() const {
     mean_completeness += it->second;
   }
 
+  if(ctr == 0) return std::make_pair(0,0);
+
   mean_completeness /= ctr;
 
-  std::cout << "Mean purity = " << mean_purity << " mean completeness = " << mean_completeness << std::endl;
+  //std::cout << "Mean purity = " << mean_purity << " mean completeness = " << mean_completeness << std::endl;
 
   return std::make_pair(mean_purity,mean_completeness);
  
 }
-
-
-
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
