@@ -454,7 +454,7 @@ bool VFitter::DoFitGridSearch2(FittedV& fittedv,int points){
       std::cout << "Vertex: " << bestfit_v.Vertex.X() << "  " << bestfit_v.Vertex.Y() <<"  " << bestfit_v.Vertex.Z() << std::endl;
       std::cout << "Arm 1: theta=" << bestfit_v.Arm1Theta << "  phi=" << bestfit_v.Arm1Phi << std::endl;
       std::cout << "Arm 2: theta=" << bestfit_v.Arm2Theta << "  phi=" << bestfit_v.Arm2Phi << std::endl;
-      std::cout << "Score=" << bestfit_score << std::endl;
+      std::cout << "Score=" << bestfit_score << "/"  << Hits.size() << "=" << bestfit_score/ Hits.size() << std::endl;
     }
   }
 
@@ -509,13 +509,19 @@ std::pair<double,int> VFitter::FitScore2(const std::vector<std::vector<HitLite>>
     line_1.Direction /= mag;
     mag = line_2.Direction.Mod();
     line_2.Direction /= mag;
-/*
-    if(verbose){
-      std::cout << "Line 1: " << line_1.Start.X() << " " << line_1.Start.Y() << " " << line_1.Direction.X() << "  " << line_1.Direction.Y() << std::endl;
-      std::cout << "Line 2: " << line_2.Start.X() << " " << line_2.Start.Y() << " " << line_2.Direction.X() << "  " << line_2.Direction.Y() << std::endl;
+
+    if(verbose && Draw){
 
       TCanvas* c = new TCanvas("c","c");
-      TGraphErrors* g = new TGraphErrors(channel_v.at(i_pl).size(),&(channel_v.at(i_pl)[0]),&(tick_v.at(i_pl)[0]),0,&(width_v.at(i_pl)[0]));
+
+      std::vector<double> channels,ticks,widths;
+      for(HitLite hit : Hits.at(i_pl)){
+        channels.push_back(hit.Channel); 
+        ticks.push_back(hit.Tick); 
+        widths.push_back(hit.Width);
+      }
+
+      TGraphErrors* g = new TGraphErrors(channels.size(),&(channels[0]),&(ticks[0]),0,&(widths[0]));
 
       g->SetName("graph2D");
       g->SetMarkerColor(1);
@@ -539,10 +545,11 @@ std::pair<double,int> VFitter::FitScore2(const std::vector<std::vector<HitLite>>
       g1->Draw("L same");
       g2->Draw("L same");
 
-      c->Print(("fit_transposed_data_Plane" + std::to_string(i_pl) + ".png").c_str());
+      c->Print(("Plots/Event_" + RSE + "_Fit_Transposed_Data_Plane" + std::to_string(i_pl) + ".png").c_str());
 
     }
-*/
+    
+
     for(HitLite hit : hits.at(i_pl)){
       double arm1_sep = HitLineSeparation2(hit,line_1);
       double arm2_sep = HitLineSeparation2(hit,line_2);
@@ -564,8 +571,8 @@ std::pair<double,int> VFitter::FitScore2(const std::vector<std::vector<HitLite>>
 double VFitter::HitLineSeparation2(const HitLite& hit,const LineWireTick2& line){
 
   double dot = (hit.Channel-line.Start.X())*line.Direction.X() + (hit.Tick-line.Start.Y())*line.Direction.Y();
-  if(dot < 0) return (hit.Channel-line.Start.X())*(hit.Channel-line.Start.X()) + (hit.Tick-line.Start.Y())*(hit.Tick-line.Start.Y()); 
-  else return (line.Start.X()-hit.Channel + dot*line.Direction.X())*(line.Start.X()-hit.Channel + dot*line.Direction.X()) + (line.Start.Y()-hit.Tick + dot*line.Direction.Y())*(line.Start.Y()-hit.Tick + dot*line.Direction.Y());
+  if(dot < 0) return (hit.Channel-line.Start.X())*(hit.Channel-line.Start.X()) + (hit.Tick-line.Start.Y())*(hit.Tick-line.Start.Y())/hit.Width/hit.Width; 
+  else return (line.Start.X()-hit.Channel + dot*line.Direction.X())*(line.Start.X()-hit.Channel + dot*line.Direction.X()) + (line.Start.Y()-hit.Tick + dot*line.Direction.Y())*(line.Start.Y()-hit.Tick + dot*line.Direction.Y())/hit.Width/hit.Width;
 
 }
 
@@ -579,7 +586,7 @@ bool VFitter::DoFitGridSearch3(FittedV& fittedv,int points){
   for(size_t i_pl=0;i_pl<3;i_pl++) RemoveOffset(Hits.at(i_pl),InitialGuess.Vertex,i_pl);
   TRandom2* r = new TRandom2();
 
-  std::pair<double,double> vertex_range = {-5.0,5.0};
+  std::pair<double,double> vertex_range = {-10.0,10.0};
 
   double bestfit_score=1e10;
   FittedV bestfit_v;
@@ -639,7 +646,7 @@ bool VFitter::DoFitGridSearch3(FittedV& fittedv,int points){
       std::cout << "Vertex: " << bestfit_v.Vertex.X() << "  " << bestfit_v.Vertex.Y() <<"  " << bestfit_v.Vertex.Z() << std::endl;
       std::cout << "Arm 1: theta=" << bestfit_v.Arm1Theta << "  phi=" << bestfit_v.Arm1Phi << std::endl;
       std::cout << "Arm 2: theta=" << bestfit_v.Arm2Theta << "  phi=" << bestfit_v.Arm2Phi << std::endl;
-      std::cout << "Score=" << bestfit_score << std::endl;
+      std::cout << "Score=" << fittedv.Chi2 << "/"  << fittedv.NDof << "=" << fittedv.Chi2/fittedv.NDof << std::endl;
     }
   }
 
@@ -647,13 +654,12 @@ bool VFitter::DoFitGridSearch3(FittedV& fittedv,int points){
 
   fittedv = bestfit_v;
   fittedv.Vertex = bestfit_v.Vertex + InitialGuess.Vertex;
-  //FitScore2(Channel_v,Tick_v,Width_v,fittedv,true); 
 
   std::cout << "Best Fit:" << std::endl;
   std::cout << "Vertex: " << bestfit_v.Vertex.X() << "  " << bestfit_v.Vertex.Y() <<"  " << bestfit_v.Vertex.Z() << std::endl;
   std::cout << "Arm 1: theta=" << bestfit_v.Arm1Theta << "  phi=" << bestfit_v.Arm1Phi << std::endl;
   std::cout << "Arm 2: theta=" << bestfit_v.Arm2Theta << "  phi=" << bestfit_v.Arm2Phi << std::endl;
-  std::cout << "Score=" << bestfit_score << std::endl;
+  std::cout << "Score=" << bestfit_v.Chi2 << "/"  << bestfit_v.NDof << "=" << bestfit_v.Chi2/bestfit_v.NDof << std::endl;
 
   delete r;
 

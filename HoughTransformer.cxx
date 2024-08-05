@@ -236,9 +236,12 @@ void HoughTransformer::MakeTransform2(){
 
   }
 
-  if(!Transform.size()) return;
+  if(Transform.size() < 4) return;
 
-  h_Transform = new TH2D("h_transform",";r;theta;",std::floor((r_max-r_min)/RBinSize),r_min,r_max,std::floor((theta_max-theta_min)/ThetaBinSize),theta_min,theta_max);
+  int nbins_r = std::max((r_max-r_min)/RBinSize,1.0);
+  int nbins_theta = std::max((theta_max-theta_min)/RBinSize,1.0);
+
+  h_Transform = new TH2D("h_transform",";r;theta;",nbins_r,r_min,r_max,nbins_theta,theta_min,theta_max);
   for(std::pair<double,double> result : transform)
     h_Transform->Fill(result.first,result.second);
 /*

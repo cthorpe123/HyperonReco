@@ -6,8 +6,10 @@ R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 #include "VFitter.h"
 #include "SpacePointVisualisation.h" 
 #include "HoughTransformer.h"
+#include <ctime>    
+#include <chrono>
 
-const int tunes = 1;
+const int tunes = 500;
 std::vector<double> theta_bin_size;
 std::vector<double> r_bin_size;
 std::vector<int> peak_size;
@@ -28,8 +30,9 @@ void TuneHoughTransform(){
   int n_tests = 0;
 
   // Prepare all the tunes
-  TRandom2* r = new TRandom2();
-
+  auto start = std::chrono::system_clock::now();
+  TRandom2* r = new TRandom2(std::chrono::system_clock::to_time_t(start));
+  
   std::pair<double,double> theta_bin_size_range = {0.01,0.5};
   std::pair<double,double> r_bin_size_range = {0.1,20};
   std::pair<double,double> peak_size_range = {1,5};
@@ -57,6 +60,7 @@ void TuneHoughTransform(){
     Event e = E.GetEvent(ievent);
     //if(e.run == run_to_view && e.subrun == subrun_to_view && e.event == event_to_view)
 
+    std::cout << "Event " << ievent+1 << "/" << E.GetNEvents() << std::endl;
     std::cout << "Event " << e.run << " " << e.subrun << " " << e.event << std::endl;
 
     std::tuple<int,int,int> event = std::make_tuple(e.run,e.subrun,e.event);
@@ -66,15 +70,15 @@ void TuneHoughTransform(){
     //if(std::find(events.begin(),events.end(),event) == events.end()) continue;
 
     std::vector<RecoParticle> pfps = e.TracklikePrimaryDaughters;
-    pfps.insert(pfps.end(),e.ShowerlikePrimaryDaughters.begin(),e.ShowerlikePrimaryDaughters.end());
+    //pfps.insert(pfps.end(),e.ShowerlikePrimaryDaughters.begin(),e.ShowerlikePrimaryDaughters.end());
 
     for(size_t i_pfp=0;i_pfp<pfps.size();i_pfp++){ 
 
       const RecoParticle& pfp = pfps.at(i_pfp);
 
       std::vector<std::vector<hyperonreco::HitLite>> hits(3);
-      hyperonreco::AddHits(hits,pfp.HitChannels,pfp.HitTicks,pfp.HitWidths,pfp.HitTrackIDs);
-      hyperonreco::AddHits(hits,e.UnclaimedHitChannels,e.UnclaimedHitTicks,e.UnclaimedHitWidths,e.UnclaimedHitTrackIDs);
+      hyperonreco::AddHits(hits,pfp.HitChannels,pfp.HitTicks,pfp.HitWidths,pfp.HitTrackIDs,pfp.HitPDGs);
+      //hyperonreco::AddHits(hits,e.UnclaimedHitChannels,e.UnclaimedHitTicks,e.UnclaimedHitWidths,e.UnclaimedHitTrackIDs);
       hyperonreco::KeepHitsInROI(TVector3(pfp.X_NoSC,pfp.Y_NoSC,pfp.Z_NoSC),hits,roi_size_ch,roi_size_tick);
 
       n_tests++;
@@ -101,7 +105,6 @@ void TuneHoughTransform(){
           transformer.SetMaxNeighbourDist(max_neighbour_dist.at(i));
           transformer.MakeTransform2();
           std::pair<double,double> performance = transformer.GetPerformanceMetrics();
-          std::cout << performance.first << "  " << performance.second << std::endl;
           score.at(i) += performance.first*performance.second;      
 
         }
@@ -116,7 +119,6 @@ void TuneHoughTransform(){
   double best_score = 0;
   int best_tune = -1;
   for(size_t i=0;i<tunes;i++){
-    std::cout << "score=" << score.at(i) << std::endl;
     if(score.at(i) > best_score){
       best_score = score.at(i);
       best_tune = i;
@@ -126,6 +128,12 @@ void TuneHoughTransform(){
   std::cout << "Best score: " << best_score/n_tests << std::endl;
   std::cout << "Draw results of best tune" << std::endl;
 
+  std::cout << "theta_bin_size=" << theta_bin_size.at(best_tune) << std::endl;
+  std::cout << "r_bin_size=" << r_bin_size.at(best_tune) << std::endl;
+  std::cout << "peak_size=" << peak_size.at(best_tune) << std::endl;
+  std::cout << "grouping=" << grouping.at(best_tune) << std::endl;
+  std::cout << "max_neighbour_dist=" << max_neighbour_dist.at(best_tune) << std::endl;
+/*
   ievent=0;
   while(ievent<E.GetNEvents()){
 
@@ -147,8 +155,8 @@ void TuneHoughTransform(){
       const RecoParticle& pfp = pfps.at(i_pfp);
 
       std::vector<std::vector<hyperonreco::HitLite>> hits(3);
-      hyperonreco::AddHits(hits,pfp.HitChannels,pfp.HitTicks,pfp.HitWidths,pfp.HitTrackIDs);
-      hyperonreco::AddHits(hits,e.UnclaimedHitChannels,e.UnclaimedHitTicks,e.UnclaimedHitWidths,e.UnclaimedHitTrackIDs);
+      hyperonreco::AddHits(hits,pfp.HitChannels,pfp.HitTicks,pfp.HitWidths,pfp.HitTrackIDs,pfp.HitPDGs);
+      //hyperonreco::AddHits(hits,e.UnclaimedHitChannels,e.UnclaimedHitTicks,e.UnclaimedHitWidths,e.UnclaimedHitTrackIDs);
       hyperonreco::KeepHitsInROI(TVector3(pfp.X_NoSC,pfp.Y_NoSC,pfp.Z_NoSC),hits,roi_size_ch,roi_size_tick);
 
       for(int i_pl=0;i_pl<3;i_pl++){
@@ -176,6 +184,40 @@ void TuneHoughTransform(){
     } // i_pfp
 
   } // ievent
+*/
+  E.Close();
+
+
+  gSystem->Exec("mkdir -p rootfiles");
+  TFile* f_tunes = new TFile("rootfiles/Tunes.root","RECREATE");
+  TTree* t_tunes = new TTree("tunes","tunes");
+
+  double t_theta_bin_size;
+  double t_r_bin_size;
+  int t_peak_size;
+  int t_grouping;
+  double t_max_neighbour_dist;
+  double t_score;
+  t_tunes->Branch("theta_bin_size",&t_theta_bin_size);
+  t_tunes->Branch("r_bin_size",&t_r_bin_size);
+  t_tunes->Branch("peak_size",&t_peak_size);
+  t_tunes->Branch("grouping",&t_grouping);
+  t_tunes->Branch("max_neighbour_dist",&t_max_neighbour_dist);
+  t_tunes->Branch("score",&t_score);
+
+  for(int i=0;i<tunes;i++){
+    t_theta_bin_size = theta_bin_size.at(i);
+    t_r_bin_size = r_bin_size.at(i);
+    t_peak_size = peak_size.at(i);
+    t_grouping = grouping.at(i);
+    t_max_neighbour_dist = max_neighbour_dist.at(i);
+    t_score = score.at(i)/n_tests;
+    t_tunes->Fill();
+  }
+
+  t_tunes->Write("tunes");
+
+  f_tunes->Close();
 
 }
 
