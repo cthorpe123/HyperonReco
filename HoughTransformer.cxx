@@ -242,7 +242,7 @@ void HoughTransformer::MakeTransform2(){
   if(Transform.size() < 4) return;
 
   int nbins_r = std::max((r_max-r_min)/RBinSize,1.0);
-  int nbins_theta = std::max((theta_max-theta_min)/RBinSize,1.0);
+  int nbins_theta = std::max((theta_max-theta_min)/ThetaBinSize,1.0);
 
   h_Transform = new TH2D("h_transform",";r;theta;",nbins_r,r_min,r_max,nbins_theta,theta_min,theta_max);
   for(std::pair<double,double> result : transform)
@@ -359,9 +359,41 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
     //std::cout << point.R << "  " << point.Theta << std::endl;
     theta_min = std::min(theta_min,point.Theta);
     theta_max = std::max(theta_max,point.Theta);
-    r_min = std::min(r_min,point.Theta);
-    r_max = std::max(r_max,point.Theta);
+    r_min = std::min(r_min,point.R);
+    r_max = std::max(r_max,point.R);
   }
+
+  TH2D* h_Transform_Conv = new TH2D("h_Transform_Conv","",20*(r_max-r_min)/RBinSize,r_min,r_max,20*(theta_max-theta_min)/ThetaBinSize,theta_min,theta_max);
+
+  for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
+    for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
+
+      double r = h_Transform_Conv->GetXaxis()->GetBinCenter(i);
+      double theta = h_Transform_Conv->GetYaxis()->GetBinCenter(j);
+
+      int points_inside = 0;
+      for(HoughTransformPoint point : Transform){
+        if(point.R > r - RBinSize/2 && point.R < r + RBinSize/2 && point.Theta > theta - ThetaBinSize/2 && point.Theta < theta + ThetaBinSize/2)
+          points_inside++;        
+      }
+      //std::cout << r << "  " << theta << "  points=" << points_inside << std::endl;
+      h_Transform_Conv->SetBinContent(i,j,points_inside);
+    }
+  }
+
+  if(Draw){
+    TCanvas* c = new TCanvas("c","c");
+    h_Transform_Conv->Draw("colz");
+    h_Transform_Conv->SetStats(0);
+    c->Print(("Plots/Event_" + RSE + "_HT_Conv_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Clear();
+    delete c;
+  }
+
+
+
+
+  delete h_Transform_Conv; 
 
   return results;
 
@@ -429,6 +461,7 @@ std::vector<HoughTransformPoint> HoughTransformer::MakeClusters() const {
     }
 
     TGraph* g_allhits = new TGraph(channels_allhits.size(),&(channels_allhits[0]),&(ticks_allhits[0]));
+    g_allhits->SetMarkerColor(1);
     g_allhits->SetMarkerSize(0.6);
     g_allhits->SetMarkerStyle(20);
     g_cluster_v.push_back(g_allhits);

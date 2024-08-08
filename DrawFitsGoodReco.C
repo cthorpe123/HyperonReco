@@ -27,7 +27,7 @@ void DrawFitsGoodReco(){
 
   // Select the event we want to analyse
   int ievent=0;
-  while(ievent<E.GetNEvents() && ievent < 10){
+  while(ievent<E.GetNEvents()){
     Event e = E.GetEvent(ievent);
 
     std::cout << ievent << "/" << E.GetNEvents() << std::endl;
@@ -70,11 +70,10 @@ void DrawFitsGoodReco(){
       double or_ti = vertex_ch_tick.second;
 
       hyperonreco::HoughTransformer transformer(hits.at(i_pl),i_pl,vertex_ch_tick.first,vertex_ch_tick.second,true);
-      transformer.SetThetaBinSize(0.22);
       transformer.SetEvent(e.run,e.subrun,e.event);   
       transformer.MakeTransform2();
       transformer.FindPeaks2();
-      //transformer.MakeClusters();
+      transformer.MakeClusters();
 
     } // i_pl
 
