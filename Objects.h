@@ -1,12 +1,14 @@
 #ifndef _Objects_h_
 #define _Objects_h_
 
+#include "Position_To_Wire.h"
+
 namespace hyperonreco {
 
   // Hit object that can live outside LArSoft
   struct HitLite {
 
-    HitLite(int plane,double channel,double tick,double width,int number,int trackid=-1,int pdg=-1) :
+    HitLite(int plane,double channel,double tick,double width,size_t number,int trackid=-1,int pdg=-1) :
       Plane(plane),Channel(channel),Tick(tick),Width(width),Number(number),TrackID(trackid),PDG(pdg)
     {}
 
@@ -14,26 +16,30 @@ namespace hyperonreco {
     double Channel; 
     double Tick;
     double Width;
-    int Number;
+    size_t Number;
     int TrackID;
     int PDG;
 
   }; 
 
-  inline std::vector<HitLite> MakeHits(const std::vector<double>& channels,const std::vector<double>& ticks,const std::vector<double>& widths,const std::vector<int>& trackids,const std::vector<int>& pdgs,int plane){
+  inline std::vector<HitLite> MakeHits(std::vector<double> channels,std::vector<double> ticks,std::vector<double> widths,std::vector<int> trackids,std::vector<int> pdgs,int plane){
     std::vector<HitLite> hits;
-    for(size_t i_p=0;i_p<channels.size();i_p++)
-      hits.push_back(HitLite(plane,channels.at(i_p),ticks.at(i_p),widths.at(i_p),i_p,trackids.at(i_p),pdgs.at(i_p)));
+    for(size_t i_p=0;i_p<channels.size();i_p++){
+      HitLite hit(plane,channels.at(i_p),ticks.at(i_p),widths.at(i_p),i_p,trackids.at(i_p),pdgs.at(i_p));
+      hits.push_back(hit);
+    }
     return hits;
   }
 
-  inline void AddHits(std::vector<std::vector<HitLite>>& hit_container,const std::vector<std::vector<double>>& channels, const std::vector<std::vector<double>>& ticks,const std::vector<std::vector<double>>& widths,const std::vector<std::vector<int>>& trackids,const std::vector<std::vector<int>>& pdgs){
-
-    for(int i_pl=0;i_pl<3;i_pl++){
+  inline void AddHits(std::vector<std::vector<HitLite>>& hit_container,std::vector<std::vector<double>> channels,std::vector<std::vector<double>> ticks,std::vector<std::vector<double>> widths,std::vector<std::vector<int>> trackids,std::vector<std::vector<int>> pdgs){
+  //inline std::vector<std::vector<HitLite>> AddHits(std::vector<std::vector<double>> channels,std::vector<std::vector<double>> ticks,std::vector<std::vector<double>> widths,std::vector<std::vector<int>> trackids,std::vector<std::vector<int>> pdgs){
+    for(size_t i_pl=0;i_pl<3;i_pl++){
       std::vector<HitLite> thisplane_hits = MakeHits(channels.at(i_pl),ticks.at(i_pl),widths.at(i_pl),trackids.at(i_pl),pdgs.at(i_pl),i_pl);
-      hit_container.at(i_pl).insert(hit_container.at(i_pl).end(),thisplane_hits.begin(),thisplane_hits.end());
-    }
+      for(size_t i_h=0;i_h<thisplane_hits.size();i_h++){
+        hit_container.at(i_pl).push_back(thisplane_hits.at(i_h));
+      }
 
+    }
   }
 
   inline void KeepHitsInROI(TVector3 point,std::vector<std::vector<HitLite>>& hits,double roi_size_ch,double roi_size_tick){

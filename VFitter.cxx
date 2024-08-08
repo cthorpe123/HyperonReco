@@ -374,6 +374,9 @@ bool VFitter::DoFit(FittedV& fittedv){
   std::pair<double,int> FitVal = FitScore(Hits,fittedv);
 
   std::cout << "Score = " << FitVal.first << "/" << FitVal.second << "=" << FitVal.first/FitVal.second << std::endl;
+
+  return true;
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -408,6 +411,8 @@ bool VFitter::DoFitGridSearch(FittedV& fittedv,int points){
   FitScore(Hits,fittedv,true); 
 
   delete r;
+
+  return true;
 
 }
 
@@ -467,6 +472,8 @@ bool VFitter::DoFitGridSearch2(FittedV& fittedv,int points){
   delete r;
 
   for(size_t i_pl=0;i_pl<3;i_pl++) RestoreOffset(Hits.at(i_pl),InitialGuess.Vertex,i_pl);
+
+  return true;
 
 }
 
@@ -666,6 +673,8 @@ bool VFitter::DoFitGridSearch3(FittedV& fittedv,int points){
   for(size_t i_pl=0;i_pl<3;i_pl++) RestoreOffset(Hits.at(i_pl),InitialGuess.Vertex,i_pl);
 
   if(Draw) DrawFit(fittedv);
+
+  return true;
 
 }
 

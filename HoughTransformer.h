@@ -34,6 +34,7 @@ namespace hyperonreco {
         ~HoughTransformer();
         void MakeTransform2();
         std::vector<HoughTransformPoint> FindPeaks() const;
+        std::vector<HoughTransformPoint> FindPeaks2() const;
         void DrawFits();
         void SubtractOffset(std::vector<HitLite>& hits) const;
         void RestoreOffset(std::vector<HitLite>& hits) const;
@@ -71,7 +72,7 @@ namespace hyperonreco {
 
         std::vector<HitLite> Hits_test;
 
-        std::vector<HitLite> FindNearestNeighbours(int point,const std::vector<HitLite>& hits,int num) const;
+        std::vector<HitLite> FindNearestNeighbours(int point,const std::vector<HitLite>& hits,size_t num) const;
         double Dist(const HitLite& hit,double r, double theta) const;
         std::pair<double,double> GetLine(const std::vector<HitLite>& hits);
 
@@ -80,7 +81,6 @@ namespace hyperonreco {
 
         ROOT::Math::Functor Func;
         std::unique_ptr<ROOT::Math::Minimizer> Minimizer = nullptr;
-        
 
   };
 

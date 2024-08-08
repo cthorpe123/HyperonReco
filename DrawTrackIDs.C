@@ -10,9 +10,9 @@ R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 void DrawTrackIDs(){
 
   const std::string filename = "HyperonTrees.root";
-  const int run_to_view = 7003;
-  const int subrun_to_view = 217;
-  const int event_to_view = 10897;
+  const int run_to_view = 7001;
+  const int subrun_to_view = 790;
+  const int event_to_view = 39513;
 
   EventAssembler E(false);
   E.SetFile(filename,"Background");
@@ -42,18 +42,18 @@ void DrawTrackIDs(){
   std::cout << "Proton TrackID: " << proton_trackid << "  Pion TrackID: " << pion_trackid << std::endl;
 
   // Select the PFP we want to use the hits from
-  //RecoParticle pfp = e.TracklikePrimaryDaughters.at(1);
-  //hyperonreco::FittedV v = hyperonreco::MakeFittedVGuessTrack(pfp);
-  RecoParticle pfp = e.ShowerlikePrimaryDaughters.at(0);
-  hyperonreco::FittedV v = hyperonreco::MakeFittedVGuessShower(pfp);
+  RecoParticle pfp = e.TracklikePrimaryDaughters.at(1);
+  hyperonreco::FittedV v = hyperonreco::MakeFittedVGuessTrack(pfp);
+  //RecoParticle pfp = e.ShowerlikePrimaryDaughters.at(0);
+  //hyperonreco::FittedV v = hyperonreco::MakeFittedVGuessShower(pfp);
 
   double roi_size_ch = 100; 
   double roi_size_tick = roi_size_ch*TickPerWire; 
 
   // Merge hit vectors together an remove hits outside roi 
   std::vector<std::vector<hyperonreco::HitLite>> hits(3);
-  hyperonreco::AddHits(hits,pfp.HitChannels,pfp.HitTicks,pfp.HitWidths,pfp.HitTrackIDs);
-  hyperonreco::AddHits(hits,e.UnclaimedHitChannels,e.UnclaimedHitTicks,e.UnclaimedHitWidths,e.UnclaimedHitTrackIDs);
+  hyperonreco::AddHits(hits,pfp.HitChannels,pfp.HitTicks,pfp.HitWidths,pfp.HitTrackIDs,pfp.HitPDGs);
+  hyperonreco::AddHits(hits,e.UnclaimedHitChannels,e.UnclaimedHitTicks,e.UnclaimedHitWidths,e.UnclaimedHitTrackIDs,e.UnclaimedHitPDGs);
   hyperonreco::KeepHitsInROI(TVector3(pfp.X_NoSC,pfp.Y_NoSC,pfp.Z_NoSC),hits,roi_size_ch,roi_size_tick);
 
   // Make a map between each trackid and hit collections
@@ -87,7 +87,6 @@ void DrawTrackIDs(){
     c->Clear();
 
   }
-
 
   hyperonreco::VFitter fitter(true);
   fitter.SetEvent(run_to_view,subrun_to_view,event_to_view);   

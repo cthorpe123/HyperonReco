@@ -51,7 +51,7 @@ void HoughTransformer::SetEvent(int run,int subrun,int event,int pfp){
   Subrun = subrun;
   Event = event;
   Pfp = pfp;
-  RSE = std::to_string(run) + "_" + std::to_string(subrun) + "_" + std::to_string(event) + "_" + std::to_string(Pfp);
+  RSE = std::to_string(run) + "_" + std::to_string(subrun) + "_" + std::to_string(event) + "_" + std::to_string(Pfp) + "_Plane" + std::to_string(Plane);
 
 }
 
@@ -154,7 +154,7 @@ std::pair<double,double> HoughTransformer::GetLine(const std::vector<HitLite>& h
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Find nearest neighbours to a point
 
-std::vector<HitLite> HoughTransformer::FindNearestNeighbours(int point,const std::vector<HitLite>& hits,int num) const {
+std::vector<HitLite> HoughTransformer::FindNearestNeighbours(int point,const std::vector<HitLite>& hits,size_t num) const {
 
   if(hits.size()-1 < num) return {}; 
 
@@ -163,7 +163,10 @@ std::vector<HitLite> HoughTransformer::FindNearestNeighbours(int point,const std
 
   double ch = hits.at(point).Channel;
   double ti = hits.at(point).Tick;
-  int number = hits.at(point).Number;
+  size_t number = hits.at(point).Number;
+
+  ordered_hits.push_back(hits.at(point));
+  dist_v.push_back(0.0);
 
   for(HitLite hit : hits){
 
@@ -188,7 +191,7 @@ std::vector<HitLite> HoughTransformer::FindNearestNeighbours(int point,const std
   }
 
   // if most distant point is more than x cm away, return empty vector 
-  if(dist_v.at(num-1) > MaxNeighbourDist2) return {};
+  if(dist_v.at(num) > MaxNeighbourDist2) return {};
 
   std::vector<HitLite> nearest(ordered_hits.begin(),ordered_hits.begin()+num);
 
@@ -244,15 +247,28 @@ void HoughTransformer::MakeTransform2(){
   h_Transform = new TH2D("h_transform",";r;theta;",nbins_r,r_min,r_max,nbins_theta,theta_min,theta_max);
   for(std::pair<double,double> result : transform)
     h_Transform->Fill(result.first,result.second);
-/*
+
   if(Draw){
     TCanvas* c = new TCanvas("c","c");
     h_Transform->Draw("colz");
     h_Transform->SetStats(0);
-    c->Print(("Plots/Event_" + RSE + "_HT_Plane" + std::to_string(Plane) + "_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Print(("Plots/Event_" + RSE + "_HT_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Clear();
+ 
+    std::vector<double> r,theta;
+    for(HoughTransformPoint point : Transform){
+      r.push_back(point.R);
+      theta.push_back(point.Theta);
+    }
+
+    TGraph* g = new TGraph(r.size(),&(r[0]),&(theta[0]));
+    g->Draw("AP");
+    g->SetMarkerSize(0.3);
+    c->Print(("Plots/Event_" + RSE + "_HT_Scatter_Tune_" + std::to_string(TuneID) + ".png").c_str());
+
     delete c;
   }  
-*/
+
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -302,10 +318,10 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks() const {
 
   for(HoughTransformPoint& peak : results){
 
-    double r_min = peak.R - h_Transform->GetXaxis()->GetBinWidth(1)*(PeakSize-0.5);
-    double r_max = peak.R + h_Transform->GetXaxis()->GetBinWidth(1)*(PeakSize+0.5);
-    double theta_min = peak.Theta - h_Transform->GetYaxis()->GetBinWidth(1)*(PeakSize-0.5);
-    double theta_max = peak.Theta + h_Transform->GetYaxis()->GetBinWidth(1)*(PeakSize+0.5);
+    double r_min = peak.R - h_Transform->GetXaxis()->GetBinWidth(1)*(PeakSize);
+    double r_max = peak.R + h_Transform->GetXaxis()->GetBinWidth(1)*(PeakSize);
+    double theta_min = peak.Theta - h_Transform->GetYaxis()->GetBinWidth(1)*(PeakSize);
+    double theta_max = peak.Theta + h_Transform->GetYaxis()->GetBinWidth(1)*(PeakSize);
 
     // Find all HT points within this ROI, make a list of all their points
     for(HoughTransformPoint point : Transform){
@@ -332,6 +348,27 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks() const {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
+
+  std::vector<HoughTransformPoint> results;
+
+  double theta_min=3.1415,theta_max=-3.1415;
+  double r_min=1e10,r_max=-1e10;
+
+  for(HoughTransformPoint point : Transform){
+    //std::cout << point.R << "  " << point.Theta << std::endl;
+    theta_min = std::min(theta_min,point.Theta);
+    theta_max = std::max(theta_max,point.Theta);
+    r_min = std::min(r_min,point.Theta);
+    r_max = std::max(r_max,point.Theta);
+  }
+
+  return results;
+
+} 
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void HoughTransformer::DrawFits(){
 
   std::vector<HoughTransformPoint> peaks = FindPeaks();
@@ -351,7 +388,7 @@ void HoughTransformer::DrawFits(){
   g->SetMarkerSize(0.5);
   g->Draw("AP");
 
-  c->Print(("Plots/Event_" + RSE + "_Data_Plane" + std::to_string(Plane) + "_Tune_" + std::to_string(TuneID) + ".png").c_str());
+  c->Print(("Plots/Event_" + RSE + "_Data_Tune_" + std::to_string(TuneID) + ".png").c_str());
 
   std::vector<TF1*> f_v;
   int ctr = 0;
@@ -368,7 +405,7 @@ void HoughTransformer::DrawFits(){
 
   } 
 
-  c->Print(("Plots/Event_" + RSE + "_Fits_Plane" + std::to_string(Plane) + "_Tune_" + std::to_string(TuneID) + ".png").c_str());
+  c->Print(("Plots/Event_" + RSE + "_Fits_Tune_" + std::to_string(TuneID) + ".png").c_str());
 
   delete c;
 
@@ -380,13 +417,22 @@ std::vector<HoughTransformPoint> HoughTransformer::MakeClusters() const {
 
   std::vector<HoughTransformPoint> peaks = FindPeaks();
 
-  for(HoughTransformPoint& peak : peaks)
-    RestoreOffset(peak.Hits);
-
   if(Draw){
 
     TMultiGraph *g = new TMultiGraph();
     std::vector<TGraph*> g_cluster_v;
+
+   std::vector<double> channels_allhits,ticks_allhits;
+    for(HitLite hit : Hits){
+        channels_allhits.push_back(hit.Channel);
+        ticks_allhits.push_back(hit.Tick);
+    }
+
+    TGraph* g_allhits = new TGraph(channels_allhits.size(),&(channels_allhits[0]),&(ticks_allhits[0]));
+    g_allhits->SetMarkerSize(0.6);
+    g_allhits->SetMarkerStyle(20);
+    g_cluster_v.push_back(g_allhits);
+
     int ctr=1;
     for(HoughTransformPoint& peak : peaks){
 
@@ -398,7 +444,7 @@ std::vector<HoughTransformPoint> HoughTransformer::MakeClusters() const {
       }
 
       g_cluster_v.push_back(new TGraph(channels.size(),&(channels[0]),&(ticks[0])));
-      g_cluster_v.back()->SetMarkerColor(ctr);
+      g_cluster_v.back()->SetMarkerColor(ctr+1);
       g_cluster_v.back()->SetMarkerSize(0.8);
       g_cluster_v.back()->SetMarkerStyle(20);
       g->Add(g_cluster_v.back());
@@ -409,12 +455,15 @@ std::vector<HoughTransformPoint> HoughTransformer::MakeClusters() const {
     TCanvas* c = new TCanvas("c","c");
 
     g->Draw("AP");
-    c->Print(("Plots/Event_" + RSE + "_Clusters_Plane" + std::to_string(Plane) + "_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Print(("Plots/Event_" + RSE + "_Clusters_Tune_" + std::to_string(TuneID) + ".png").c_str());
 
     delete c;
     delete g;
 
   }
+
+  for(HoughTransformPoint& peak : peaks)
+    RestoreOffset(peak.Hits);
 
   return peaks;
     
