@@ -363,7 +363,7 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
     r_max = std::max(r_max,point.R);
   }
 
-  TH2D* h_Transform_Conv = new TH2D("h_Transform_Conv","",20*(r_max-r_min)/RBinSize,r_min,r_max,20*(theta_max-theta_min)/ThetaBinSize,theta_min,theta_max);
+  TH2D* h_Transform_Conv = new TH2D("h_Transform_Conv","",5*(r_max-r_min)/RBinSize,r_min,r_max,5*(theta_max-theta_min)/ThetaBinSize,theta_min,theta_max);
 
   for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
     for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
@@ -376,8 +376,7 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
         if(point.R > r - RBinSize/2 && point.R < r + RBinSize/2 && point.Theta > theta - ThetaBinSize/2 && point.Theta < theta + ThetaBinSize/2)
           points_inside++;        
       }
-      //std::cout << r << "  " << theta << "  points=" << points_inside << std::endl;
-      h_Transform_Conv->SetBinContent(i,j,points_inside);
+      if(points_inside > 3) h_Transform_Conv->SetBinContent(i,j,points_inside);
     }
   }
 
@@ -390,7 +389,112 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
     delete c;
   }
 
+  std::vector<std::vector<int>> bins_x,bins_y;
 
+  while(true){   
+
+    int max_bin_r = -1;
+    int max_bin_theta = -1;
+    int max_bin_content = 2;
+
+    // Find the highest bin in the histogram
+    for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
+      for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
+        //std::cout << h_Transform_Conv->GetBinContent(i,j) << std::endl;
+        if(h_Transform_Conv->GetBinContent(i,j) > max_bin_content){
+          max_bin_r = i;
+          max_bin_theta = j;
+          max_bin_content = h_Transform_Conv->GetBinContent(i,j);
+        }
+      }
+    } 
+
+    if(max_bin_content <= 2) break;
+
+    bins_x.push_back(std::vector<int>());
+    bins_y.push_back(std::vector<int>());
+
+    results.push_back(HoughTransformPoint(Plane,max_bin_r,max_bin_theta)); 
+
+    // Find contiguous regions of filled bins
+    std::vector<std::pair<int,int>> BinsAddedLastPass;
+    std::vector<std::pair<int,int>> BinsAddedThisPass;
+
+    BinsAddedLastPass.push_back(std::make_pair(max_bin_r,max_bin_theta));
+
+    int nfills_this_pass = 1;
+    while(nfills_this_pass > 0){
+
+      nfills_this_pass = 0;
+      BinsAddedThisPass.clear();
+
+      // iterate over the bins added in the last pass, check the bins that neighbour those
+      for(size_t i_b=0;i_b<BinsAddedLastPass.size();i_b++){
+
+        int current_bin_x = BinsAddedLastPass.at(i_b).first;
+        int current_bin_y = BinsAddedLastPass.at(i_b).second;
+        h_Transform_Conv->SetBinContent(current_bin_x,current_bin_y,1);
+
+        // look at each of the eight bins surrounding the current one
+
+        // if bin is occupied, and not already part of the cluster, add it
+        for(int i=-1;i<=1;i++){
+          for(int j=-1;j<=1;j++){
+            if(i == 0  && j == 0) continue;
+            if(h_Transform_Conv->GetBinContent(current_bin_x+i,current_bin_y+j) > 2){ 
+              BinsAddedThisPass.push_back(std::make_pair(current_bin_x+i,current_bin_y+j));               
+              bins_x.back().push_back(current_bin_x+i);   
+              bins_y.back().push_back(current_bin_y+j);
+              h_Transform_Conv->SetBinContent(current_bin_x+i,current_bin_y+j,1);
+              nfills_this_pass++;   
+            }
+          }
+        }
+
+      }
+
+      BinsAddedLastPass = BinsAddedThisPass;
+
+    }
+
+  }
+
+  std::cout << "Found " << bins_x.size() << " peaks" << std::endl;
+
+  if(Draw){
+    TCanvas* c = new TCanvas("c","c");
+    h_Transform_Conv->Draw("colz");
+    h_Transform_Conv->SetStats(0);
+    c->Print(("Plots/Event_" + RSE + "_HT_Islands_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Clear();
+    delete c;
+  }
+
+  // For each peak, find all the points inside it, and get their corresponding hits
+  
+  for(HoughTransformPoint point : Transform){
+
+    double r = point.R;
+    double theta = point.Theta;
+    int bin_x = h_Transform_Conv->GetXaxis()->FindBin(r);
+    int bin_y = h_Transform_Conv->GetYaxis()->FindBin(theta);
+
+    for(size_t p=0;p<bins_x.size();p++){
+      if(std::find(bins_x.at(p).begin(),bins_x.at(p).end(),bin_x) != bins_x.at(p).end() &&
+          std::find(bins_y.at(p).begin(),bins_y.at(p).end(),bin_y) != bins_y.at(p).end()){
+        for(HitLite hit : point.Hits)
+          results.at(p).Hits.push_back(hit);
+      }
+    }
+
+  } 
+
+
+
+  for(HoughTransformPoint result : results){
+    result.RemoveDuplicateHits();
+    std::cout << "Peak has " << result.Hits.size() << " hits" << std::endl;
+  } 
 
 
   delete h_Transform_Conv; 
@@ -447,7 +551,7 @@ void HoughTransformer::DrawFits(){
 
 std::vector<HoughTransformPoint> HoughTransformer::MakeClusters() const {
 
-  std::vector<HoughTransformPoint> peaks = FindPeaks();
+  std::vector<HoughTransformPoint> peaks = FindPeaks2();
 
   if(Draw){
 

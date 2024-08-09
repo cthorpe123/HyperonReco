@@ -126,7 +126,7 @@ void TuneHoughTransformGoodReco(){
         transformer.SetTuneID(i);
         transformer.SetRBinSize(r_bin_size.at(i));
         transformer.SetThetaBinSize(theta_bin_size.at(i));
-        transformer.SetPeakSize(peak_size.at(i));
+        //transformer.SetPeakSize(peak_size.at(i));
         transformer.SetPointGrouping(grouping.at(i));
         transformer.SetMaxNeighbourDist(max_neighbour_dist.at(i));
         transformer.SetChi2Cut(chi2_cut.at(i));
@@ -217,7 +217,6 @@ void TuneHoughTransformGoodReco(){
   } // ievent
 
   E.Close();
-
 
   gSystem->Exec("mkdir -p rootfiles");
   TFile* f_tunes = new TFile("rootfiles/Tunes.root","RECREATE");

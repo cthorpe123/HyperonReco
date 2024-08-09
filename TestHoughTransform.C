@@ -7,10 +7,10 @@ R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 
 void TestHoughTransform(){
 
-  const std::string filename = "GoodReco.root";
+  const std::string filename = "HyperonTrees.root";
   const int run_to_view = 7003;
-  const int subrun_to_view = 1633;
-  const int event_to_view = 81680;
+  const int subrun_to_view = 1035;
+  const int event_to_view = 51797;
 
   EventAssembler E(false);
   E.SetFile(filename,"Background");
@@ -41,7 +41,7 @@ void TestHoughTransform(){
 
   std::vector<std::vector<hyperonreco::HitLite>> hits(3);
   hyperonreco::AddHits(hits,pfp.HitChannels,pfp.HitTicks,pfp.HitWidths,pfp.HitTrackIDs,pfp.HitPDGs);
-  //hyperonreco::AddHits(hits,e.UnclaimedHitChannels,e.UnclaimedHitTicks,e.UnclaimedHitWidths,e.UnclaimedHitTrackIDs,e.UnclaimedHitPDGs);
+  hyperonreco::AddHits(hits,e.UnclaimedHitChannels,e.UnclaimedHitTicks,e.UnclaimedHitWidths,e.UnclaimedHitTrackIDs,e.UnclaimedHitPDGs);
   hyperonreco::KeepHitsInROI(TVector3(pfp.X_NoSC,pfp.Y_NoSC,pfp.Z_NoSC),hits,roi_size_ch,roi_size_tick);
 
   std::vector<std::vector<hyperonreco::HoughTransformPoint>> clusters;
@@ -55,20 +55,11 @@ void TestHoughTransform(){
 
     hyperonreco::HoughTransformer transformer(hits.at(i_pl),i_pl,vertex_ch_tick.first,vertex_ch_tick.second,true);
     transformer.SetEvent(run_to_view,subrun_to_view,event_to_view);   
-    transformer.SetRBinSize(4.35514);
-    transformer.SetThetaBinSize(0.316948);
-    transformer.SetPeakSize(2);
-    transformer.SetPointGrouping(4);
-    transformer.SetMaxNeighbourDist(10.0126);
-    transformer.SetChi2Cut(1.76747);
-
     transformer.MakeTransform2();
-    transformer.DrawFits();
+    transformer.FindPeaks2();
     clusters.push_back(transformer.MakeClusters());
     std::pair<double,double> performance = transformer.GetPerformanceMetrics();
     std::cout << "Purity = " << performance.first << "  Completeness = " << performance.second << std::endl;
-
-    break;
 
   }
 

@@ -66,6 +66,18 @@ namespace hyperonreco {
     int Height;
     std::vector<HitLite> Hits;
 
+
+    void RemoveDuplicateHits(){
+      std::vector<HitLite> hits_tmp;
+      for(HitLite hit : Hits){
+        bool found = false;
+        for(size_t i_h=0;i_h<hits_tmp.size();i_h++)
+          if(hit.Number == hits_tmp.at(i_h).Number) found = true;
+        if(!found) hits_tmp.push_back(hit);
+      }       
+      Hits = hits_tmp; 
+    }
+
     // get trackid in the most hits in this cluster and how many hits it appears in
     std::pair<int,int> GetDominantTrackID(){
 
