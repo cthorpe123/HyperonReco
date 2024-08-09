@@ -459,8 +459,6 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
 
   }
 
-  std::cout << "Found " << bins_x.size() << " peaks" << std::endl;
-
   if(Draw){
     TCanvas* c = new TCanvas("c","c");
     h_Transform_Conv->Draw("colz");
@@ -489,13 +487,16 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
 
   } 
 
+  // Remove any peaks with not hits
+  // TODO: Why are there some peaks with no hits?
+  std::vector<HoughTransformPoint> results_tmp;  
+  for(HoughTransformPoint result : results)
+      if(result.Hits.size()) results_tmp.push_back(result);
+  results = results_tmp;
 
-
-  for(HoughTransformPoint result : results){
+  for(HoughTransformPoint& result : results){
     result.RemoveDuplicateHits();
-    std::cout << "Peak has " << result.Hits.size() << " hits" << std::endl;
   } 
-
 
   delete h_Transform_Conv; 
 
@@ -507,7 +508,7 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
 
 void HoughTransformer::DrawFits(){
 
-  std::vector<HoughTransformPoint> peaks = FindPeaks();
+  std::vector<HoughTransformPoint> peaks = FindPeaks2();
 
   std::vector<double> channels,ticks,widths;
   for(HitLite hit : Hits){
@@ -614,6 +615,11 @@ std::pair<double,double> HoughTransformer::GetPerformanceMetrics() const {
 
   if(!clusters.size()) return std::make_pair(0,0);
 
+  size_t hits = 0;
+  for(HoughTransformPoint cluster : clusters){
+    hits += cluster.Hits.size();
+  }
+
   // Record how many hits belong to each trackid
   std::map<int,int> m_trackid_hits;
   std::map<int,double> m_trackid_completeness;
@@ -626,7 +632,6 @@ std::pair<double,double> HoughTransformer::GetPerformanceMetrics() const {
   }
 
   // Calculate the mean purity of the clusters
-  //std::cout << "Cluster purities:" << std::endl;
   double mean_purity = 0;
   for(HoughTransformPoint cluster : clusters){
       std::pair<int,int> dominant_trackid = cluster.GetDominantTrackID();
@@ -637,13 +642,11 @@ std::pair<double,double> HoughTransformer::GetPerformanceMetrics() const {
   }
   mean_purity /= clusters.size();
 
-  //std::cout << "TrackID Completenesses:" << std::endl;
   std::map<int,double>::iterator it;
   double mean_completeness = 0;
   int ctr = 0;
   for(it = m_trackid_completeness.begin();it != m_trackid_completeness.end();it++){
     if(m_trackid_hits.at(it->first) < 5) continue;
-    //std::cout << it->first << "  " << it->second << std::endl;
     ctr++;
     mean_completeness += it->second;
   }
@@ -651,8 +654,6 @@ std::pair<double,double> HoughTransformer::GetPerformanceMetrics() const {
   if(ctr == 0) return std::make_pair(0,0);
 
   mean_completeness /= ctr;
-
-  //std::cout << "Mean purity = " << mean_purity << " mean completeness = " << mean_completeness << std::endl;
 
   return std::make_pair(mean_purity,mean_completeness);
  
