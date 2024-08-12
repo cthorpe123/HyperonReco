@@ -32,13 +32,11 @@ namespace hyperonreco {
   }
 
   inline void AddHits(std::vector<std::vector<HitLite>>& hit_container,std::vector<std::vector<double>> channels,std::vector<std::vector<double>> ticks,std::vector<std::vector<double>> widths,std::vector<std::vector<int>> trackids,std::vector<std::vector<int>> pdgs){
-  //inline std::vector<std::vector<HitLite>> AddHits(std::vector<std::vector<double>> channels,std::vector<std::vector<double>> ticks,std::vector<std::vector<double>> widths,std::vector<std::vector<int>> trackids,std::vector<std::vector<int>> pdgs){
     for(size_t i_pl=0;i_pl<3;i_pl++){
       std::vector<HitLite> thisplane_hits = MakeHits(channels.at(i_pl),ticks.at(i_pl),widths.at(i_pl),trackids.at(i_pl),pdgs.at(i_pl),i_pl);
       for(size_t i_h=0;i_h<thisplane_hits.size();i_h++){
         hit_container.at(i_pl).push_back(thisplane_hits.at(i_h));
       }
-
     }
   }
 

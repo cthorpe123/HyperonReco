@@ -9,7 +9,7 @@ R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 #include <ctime>    
 #include <chrono>
 
-const int tunes = 1000;
+const int tunes = 250;
 std::vector<double> theta_bin_size;
 std::vector<double> r_bin_size;
 std::vector<int> conv_floor;
@@ -208,7 +208,7 @@ void TuneHoughTransformGoodReco(){
   E.Close();
 
   gSystem->Exec("mkdir -p rootfiles");
-  TFile* f_tunes = new TFile("rootfiles/Tunes2.root","RECREATE");
+  TFile* f_tunes = new TFile("rootfiles/Tunes.root","RECREATE");
   TTree* t_tunes = new TTree("tunes","tunes");
 
   double t_theta_bin_size;

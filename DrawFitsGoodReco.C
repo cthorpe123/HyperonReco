@@ -4,8 +4,9 @@ R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 
 #include "EventAssembler.h"
 //#include "VFitter.h"
-//#include "SpacePointVisualisation.h" 
+#include "SpacePointVisualisation.h" 
 #include "HoughTransformer.h"
+#include "VFitter.h"
 #include <ctime>    
 #include <chrono>
 
@@ -33,8 +34,7 @@ void DrawFitsGoodReco(){
     std::cout << ievent << "/" << E.GetNEvents() << std::endl;
     ievent++;
 
-    if(e.run != 7001 || e.subrun != 964 || e.event != 48218) continue;
-
+    //if(e.run != 7001 || e.subrun != 964 || e.event != 48218) continue;
 
     std::vector<RecoParticle> pfps;
     bool has_proton=false,has_pion=false;
@@ -63,7 +63,9 @@ void DrawFitsGoodReco(){
 
     n_tests++;
 
-    for(int i_pl=0;i_pl<3;i_pl++){
+   std::vector<std::vector<hyperonreco::HoughTransformPoint>> clusters(3);
+
+    for(size_t i_pl=0;i_pl<3;i_pl++){
 
       if(hits.at(i_pl).size() < 7) continue;
 
@@ -75,9 +77,29 @@ void DrawFitsGoodReco(){
       transformer.SetEvent(e.run,e.subrun,e.event);   
       transformer.MakeTransform2();
       //transformer.FindPeaks2();
-      transformer.MakeClusters();
+      std::vector<hyperonreco::HoughTransformPoint> cluster = transformer.MakeClusters();
+      //clusters.at(i_pl).push_back(transformer.MakeClusters());
+      clusters.at(i_pl) = cluster;
 
     } // i_pl
+
+    // Try fitting V to different combinations of clusters
+    hits.clear();
+    hits.resize(3); 
+    for(size_t i_pl=0;i_pl<3;i_pl++){
+      if(clusters.at(i_pl).size() > 1) hits.at(i_pl).insert(hits.at(i_pl).end(),clusters.at(i_pl).at(0).Hits.begin(),clusters.at(i_pl).at(0).Hits.end());
+      if(clusters.at(i_pl).size() > 2) hits.at(i_pl).insert(hits.at(i_pl).end(),clusters.at(i_pl).at(1).Hits.begin(),clusters.at(i_pl).at(1).Hits.end());
+    }   
+
+    hyperonreco::VFitter fitter(true);
+    fitter.SetEvent(e.run,e.subrun,e.event);   
+    fitter.AddData(hits);
+    hyperonreco::FittedV v = hyperonreco::MakeFittedVGuessTrack(pfps.at(0));
+    fitter.SetGuess(v);
+    fitter.SetActivePlanes({2});
+    fitter.DoFitGridSearch3(v,5000); 
+
+        break;
 
   } // ievent
 

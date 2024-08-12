@@ -471,7 +471,6 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
         h_Transform_Conv->SetBinContent(current_bin_x,current_bin_y,1);
 
         // look at each of the eight bins surrounding the current one
-
         // if bin is occupied, and not already part of the cluster, add it
         for(int i=-1;i<=1;i++){
           for(int j=-1;j<=1;j++){
@@ -484,6 +483,25 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
               nfills_this_pass++;   
             }
           }
+        }
+
+        // If the bin is the first/last in theta space, then the last/first bin in theta space also neighbours it as theta
+        // has to wrap around
+        for(int i=-1;i<=1;i++){
+          if(current_bin_y == h_Transform_Conv->GetNbinsY() && h_Transform_Conv->GetBinContent(current_bin_x+i,1) > 2){
+            BinsAddedThisPass.push_back(std::make_pair(current_bin_x+i,1));               
+            bins_x.back().push_back(current_bin_x+i);   
+            bins_y.back().push_back(1);
+            h_Transform_Conv->SetBinContent(current_bin_x+i,1,1);
+            nfills_this_pass++;   
+          } 
+          if(current_bin_y == 1 && h_Transform_Conv->GetBinContent(current_bin_x+i,h_Transform_Conv->GetNbinsY()) > 2){
+            BinsAddedThisPass.push_back(std::make_pair(current_bin_x+i,h_Transform_Conv->GetNbinsY()));               
+            bins_x.back().push_back(current_bin_x+i);   
+            bins_y.back().push_back(h_Transform_Conv->GetNbinsY());
+            h_Transform_Conv->SetBinContent(current_bin_x+i,h_Transform_Conv->GetNbinsY(),1);
+            nfills_this_pass++;   
+          } 
         }
 
       }
