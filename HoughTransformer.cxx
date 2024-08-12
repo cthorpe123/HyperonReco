@@ -14,6 +14,7 @@ HoughTransformer::HoughTransformer(std::vector<HitLite> hits,int plane,double or
       double val = 0.0;
       for(size_t i=0;i<Hits_test.size();i++)
           val += pow(Dist(Hits_test.at(i),coeff[0],coeff[1]),2);
+      //std::cout << coeff[0] << "  " << coeff[1] << "  " << val << std::endl;      
       return val;
   } , 2);
  
@@ -97,6 +98,14 @@ void HoughTransformer::SetPointGrouping(int size){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void HoughTransformer::SetConvFloor(int fl){
+
+  ConvFloor = fl;
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void HoughTransformer::SetMaxNeighbourDist(double dist){
 
   MaxNeighbourDist2 = dist*dist;
@@ -146,6 +155,8 @@ std::pair<double,double> HoughTransformer::GetLine(const std::vector<HitLite>& h
   Minimizer->SetVariable(1,"theta",0,0.01);
   Minimizer->SetVariableLimits(1,-3.1415,3.1415);
   Minimizer->Minimize();
+
+  //std::cout << Minimizer->Status() << std::endl;
 
   return std::make_pair(Minimizer->X()[0],Minimizer->X()[1]);
 
@@ -220,11 +231,35 @@ void HoughTransformer::MakeTransform2(){
     if(!nearest_neighbors.size()) continue;
 
     std::pair<double,double> line = GetLine(nearest_neighbors);
-     
-    /*
-    std::cout << std::endl;
-    for(HitLite hit : nearest_neighbors) std::cout << hit.Channel << "  " << hit.Tick << std::endl;
-    std::cout << line.first << "  " << line.second << std::endl;
+   
+    if(line.second < 3.1415/2) line.second += 3.1415;
+    if(line.second > 3.1415/2) line.second -= 3.1415;
+
+    /* 
+    // std::cout << std::endl;
+    std::vector<double> channel,tick;
+    for(HitLite hit : nearest_neighbors){
+      // std::cout << hit.Channel << "  " << hit.Tick << std::endl;
+      channel.push_back(hit.Channel);
+      tick.push_back(hit.Tick);
+    }
+    //std::cout << "r=" << line.first << "  theta=" << line.second << std::endl;
+
+    TCanvas* c = new TCanvas("c","c");
+    TGraph* g = new TGraph(channel.size(),&(channel[0]),&(tick[0]));
+    TF1* f = new TF1("f","-(cos([1])/sin([1]))*x + [0]/sin([1])",-100,100);
+    f->SetParameter(0,line.first);
+    f->SetParameter(1,line.second);
+    g->SetMarkerSize(0.4);
+    g->SetMarkerStyle(20);
+    g->Draw("AP");
+    f->Draw("L same"); 
+    c->Print(("Plots/Event_" + RSE + "_Group_" + std::to_string(i) + ".png").c_str());
+ 
+ 
+    delete g;
+    delete f;
+    delete c;
     */
 
     r_min = std::min(r_min,line.first);
@@ -352,18 +387,18 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
 
   std::vector<HoughTransformPoint> results;
 
-  double theta_min=3.1415,theta_max=-3.1415;
+  //double theta_min=3.1415,theta_max=-3.1415;
   double r_min=1e10,r_max=-1e10;
+
 
   for(HoughTransformPoint point : Transform){
     //std::cout << point.R << "  " << point.Theta << std::endl;
-    theta_min = std::min(theta_min,point.Theta);
-    theta_max = std::max(theta_max,point.Theta);
     r_min = std::min(r_min,point.R);
     r_max = std::max(r_max,point.R);
   }
 
-  TH2D* h_Transform_Conv = new TH2D("h_Transform_Conv","",5*(r_max-r_min)/RBinSize,r_min,r_max,5*(theta_max-theta_min)/ThetaBinSize,theta_min,theta_max);
+
+  TH2D* h_Transform_Conv = new TH2D("h_Transform_Conv","",5*(r_max-r_min)/RBinSize,r_min,r_max,5*3.1415/ThetaBinSize,-3.1415/2,3.1415/2);
 
   for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
     for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
@@ -376,7 +411,7 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
         if(point.R > r - RBinSize/2 && point.R < r + RBinSize/2 && point.Theta > theta - ThetaBinSize/2 && point.Theta < theta + ThetaBinSize/2)
           points_inside++;        
       }
-      if(points_inside > 3) h_Transform_Conv->SetBinContent(i,j,points_inside);
+      if(points_inside > ConvFloor) h_Transform_Conv->SetBinContent(i,j,points_inside);
     }
   }
 
@@ -470,6 +505,7 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
 
   // For each peak, find all the points inside it, and get their corresponding hits
   
+  std::vector<int> used_hits;
   for(HoughTransformPoint point : Transform){
 
     double r = point.R;
@@ -480,8 +516,16 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
     for(size_t p=0;p<bins_x.size();p++){
       if(std::find(bins_x.at(p).begin(),bins_x.at(p).end(),bin_x) != bins_x.at(p).end() &&
           std::find(bins_y.at(p).begin(),bins_y.at(p).end(),bin_y) != bins_y.at(p).end()){
-        for(HitLite hit : point.Hits)
-          results.at(p).Hits.push_back(hit);
+        for(HitLite hit : point.Hits){
+          if(std::find(used_hits.begin(),used_hits.end(),hit.Number) != used_hits.end()){
+            //std::cout << "Hit already used in another cluster" << std::endl;
+          }
+          else {
+            results.at(p).Hits.push_back(hit);
+            used_hits.push_back(hit.Number);
+          }
+        }
+        break; 
       }
     }
 
@@ -497,6 +541,23 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
   for(HoughTransformPoint& result : results){
     result.RemoveDuplicateHits();
   } 
+
+/*
+  std::cout << "Lists of hits in each cluster" << std::endl;
+  int ctr=0;
+  used_hits.clear();
+  for(HoughTransformPoint result : results){
+    std::cout << "Cluster " << ctr << std::endl;
+    for(HitLite hit : result.Hits){
+      std::cout << hit.Number << std::endl;
+      if(std::find(used_hits.begin(),used_hits.end(),hit.Number) != used_hits.end()){
+        std::cout << "Hit already used in another cluster" << std::endl;
+      }
+      else used_hits.push_back(hit.Number);
+    }
+    ctr++;
+  }
+*/
 
   delete h_Transform_Conv; 
 
@@ -569,7 +630,7 @@ std::vector<HoughTransformPoint> HoughTransformer::MakeClusters() const {
     g_allhits->SetMarkerColor(1);
     g_allhits->SetMarkerSize(0.6);
     g_allhits->SetMarkerStyle(20);
-    g_cluster_v.push_back(g_allhits);
+    g->Add(g_allhits);
 
     int ctr=1;
     for(HoughTransformPoint& peak : peaks){

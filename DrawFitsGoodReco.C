@@ -31,8 +31,10 @@ void DrawFitsGoodReco(){
     Event e = E.GetEvent(ievent);
 
     std::cout << ievent << "/" << E.GetNEvents() << std::endl;
-
     ievent++;
+
+    if(e.run != 7001 || e.subrun != 964 || e.event != 48218) continue;
+
 
     std::vector<RecoParticle> pfps;
     bool has_proton=false,has_pion=false;
@@ -72,7 +74,7 @@ void DrawFitsGoodReco(){
       hyperonreco::HoughTransformer transformer(hits.at(i_pl),i_pl,vertex_ch_tick.first,vertex_ch_tick.second,true);
       transformer.SetEvent(e.run,e.subrun,e.event);   
       transformer.MakeTransform2();
-      transformer.FindPeaks2();
+      //transformer.FindPeaks2();
       transformer.MakeClusters();
 
     } // i_pl

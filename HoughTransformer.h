@@ -45,6 +45,7 @@ namespace hyperonreco {
         void SetPeakSize(int size);
         void SetPointGrouping(int size);
         void SetMaxNeighbourDist(double dist);
+        void SetConvFloor(int fl);
 
         void SetEvent(int run,int subrun,int event,int pfp=0);
         void SetTuneID(int tuneid);
@@ -64,11 +65,12 @@ namespace hyperonreco {
         const double Origin_Tick;
 
         // Tuning parameters
-        double RBinSize = 10;
-        double ThetaBinSize = 0.15;
+        double RBinSize = 10.0;
+        double ThetaBinSize = 0.2;
         int PeakSize = 1;
         int PointGrouping = 5;
-        double MaxNeighbourDist2 = 10.0*10.0;
+        int ConvFloor = 3;
+        double MaxNeighbourDist2 = 13.0*13.0;
 
         std::vector<HitLite> Hits_test;
 

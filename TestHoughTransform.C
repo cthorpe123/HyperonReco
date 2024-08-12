@@ -7,10 +7,10 @@ R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 
 void TestHoughTransform(){
 
-  const std::string filename = "HyperonTrees.root";
-  const int run_to_view = 7003;
-  const int subrun_to_view = 1035;
-  const int event_to_view = 51797;
+  const std::string filename = "GoodReco.root";
+  const int run_to_view = 7001;
+  const int subrun_to_view = 964;
+  const int event_to_view = 48218;
 
   EventAssembler E(false);
   E.SetFile(filename,"Background");
@@ -56,7 +56,7 @@ void TestHoughTransform(){
     hyperonreco::HoughTransformer transformer(hits.at(i_pl),i_pl,vertex_ch_tick.first,vertex_ch_tick.second,true);
     transformer.SetEvent(run_to_view,subrun_to_view,event_to_view);   
     transformer.MakeTransform2();
-    transformer.FindPeaks2();
+    //transformer.FindPeaks2();
     clusters.push_back(transformer.MakeClusters());
     std::pair<double,double> performance = transformer.GetPerformanceMetrics();
     std::cout << "Purity = " << performance.first << "  Completeness = " << performance.second << std::endl;
