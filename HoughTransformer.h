@@ -65,12 +65,12 @@ namespace hyperonreco {
         const double Origin_Tick;
 
         // Tuning parameters
-        double RBinSize = 4.32536;
-        double ThetaBinSize = 0.187234;
+        double RBinSize = 3.7;
+        double ThetaBinSize = 0.18;
         int PeakSize = 1;
         int PointGrouping = 4;
         int ConvFloor = 2;
-        double MaxNeighbourDist2 = 13.9*13.9;
+        double MaxNeighbourDist2 = 11*11;
 
         std::vector<HitLite> Hits_test;
 

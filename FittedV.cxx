@@ -53,8 +53,8 @@ std::pair<TGraph*,TGraph*> FittedV::Make2DVGraphs(int i_pl) const {
    g1->SetPoint(0,line_1.Start.X(),line_1.Start.Y());
    g2->SetPoint(0,line_2.Start.X(),line_2.Start.Y());
 
-   g1->SetPoint(1,line_1.Start.X()+line_1.Direction.X()*200,line_1.Start.Y()+line_1.Direction.Y()*200);
-   g2->SetPoint(1,line_2.Start.X()+line_2.Direction.X()*200,line_2.Start.Y()+line_2.Direction.Y()*200);
+   g1->SetPoint(1,line_1.Start.X()+line_1.Direction.X()*500,line_1.Start.Y()+line_1.Direction.Y()*500);
+   g2->SetPoint(1,line_2.Start.X()+line_2.Direction.X()*500,line_2.Start.Y()+line_2.Direction.Y()*500);
 
    g1->SetLineColor(2); 
    g2->SetLineColor(3); 

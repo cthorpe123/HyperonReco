@@ -507,9 +507,9 @@ std::pair<double,int> VFitter::FitScore2(const std::vector<std::vector<HitLite>>
       line_2.Direction = TVector2(sin60*arm2_direction_3d.Y()+cos60*arm2_direction_3d.Z(),arm2_direction_3d.X());
     }
     if(i_pl == 2){
-      line_1.Direction = TVector2(fittedv.Vertex.Z(),fittedv.Vertex.X());
+      line_1.Start = TVector2(fittedv.Vertex.Z(),fittedv.Vertex.X());
       line_1.Direction = TVector2(arm1_direction_3d.Z(),arm1_direction_3d.X());
-      line_2.Direction = TVector2(fittedv.Vertex.Z(),fittedv.Vertex.X());
+      line_2.Start = TVector2(fittedv.Vertex.Z(),fittedv.Vertex.X());
       line_2.Direction = TVector2(arm2_direction_3d.Z(),arm2_direction_3d.X());
     }
     double mag = line_1.Direction.Mod();
@@ -578,8 +578,8 @@ std::pair<double,int> VFitter::FitScore2(const std::vector<std::vector<HitLite>>
 double VFitter::HitLineSeparation2(const HitLite& hit,const LineWireTick2& line){
 
   double dot = (hit.Channel-line.Start.X())*line.Direction.X() + (hit.Tick-line.Start.Y())*line.Direction.Y();
-  if(dot < 0) return (hit.Channel-line.Start.X())*(hit.Channel-line.Start.X()) + (hit.Tick-line.Start.Y())*(hit.Tick-line.Start.Y())/hit.Width/hit.Width; 
-  else return (line.Start.X()-hit.Channel + dot*line.Direction.X())*(line.Start.X()-hit.Channel + dot*line.Direction.X()) + (line.Start.Y()-hit.Tick + dot*line.Direction.Y())*(line.Start.Y()-hit.Tick + dot*line.Direction.Y())/hit.Width/hit.Width;
+  if(dot < 0) return (hit.Channel-line.Start.X())*(hit.Channel-line.Start.X()) + (hit.Tick-line.Start.Y())*(hit.Tick-line.Start.Y()); 
+  else return (line.Start.X()-hit.Channel + dot*line.Direction.X())*(line.Start.X()-hit.Channel + dot*line.Direction.X()) + (line.Start.Y()-hit.Tick + dot*line.Direction.Y())*(line.Start.Y()-hit.Tick + dot*line.Direction.Y());
 
 }
 

@@ -16,9 +16,6 @@ void DrawFitsGoodReco(){
 
   const std::string filename = "GoodReco.root";
 
-  // number of pfps the transformer has been tested - use to get the average performance metrics
-  int n_tests = 0;
-
   // Merge hit vectors together an remove hits outside roi 
   double roi_size_ch = 100; 
   double roi_size_tick = roi_size_ch*TickPerWire; 
@@ -34,7 +31,7 @@ void DrawFitsGoodReco(){
     std::cout << ievent << "/" << E.GetNEvents() << std::endl;
     ievent++;
 
-    //if(e.run != 7001 || e.subrun != 964 || e.event != 48218) continue;
+    if(e.run != 7003 || e.subrun != 1633 || e.event != 81680) continue;
 
     std::vector<RecoParticle> pfps;
     bool has_proton=false,has_pion=false;
@@ -61,9 +58,7 @@ void DrawFitsGoodReco(){
       hyperonreco::KeepHitsInROI(TVector3(pfp.X_NoSC,pfp.Y_NoSC,pfp.Z_NoSC),hits,roi_size_ch,roi_size_tick);
     }
 
-    n_tests++;
-
-   std::vector<std::vector<hyperonreco::HoughTransformPoint>> clusters(3);
+    std::vector<std::vector<hyperonreco::HoughTransformPoint>> clusters(3);
 
     for(size_t i_pl=0;i_pl<3;i_pl++){
 
@@ -96,10 +91,10 @@ void DrawFitsGoodReco(){
     fitter.AddData(hits);
     hyperonreco::FittedV v = hyperonreco::MakeFittedVGuessTrack(pfps.at(0));
     fitter.SetGuess(v);
-    fitter.SetActivePlanes({2});
-    fitter.DoFitGridSearch3(v,5000); 
+    //fitter.SetActivePlanes({0,1,2});
+    fitter.DoFitGridSearch3(v,20000); 
 
-        break;
+    break;
 
   } // ievent
 
