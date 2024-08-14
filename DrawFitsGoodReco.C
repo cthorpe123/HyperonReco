@@ -12,20 +12,6 @@ R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 
 using namespace hyperonreco;
 
-unsigned nChoosek( unsigned n, unsigned k )
-{
-  if (k > n) return 0;
-  if (k * 2 > n) k = n-k;
-  if (k == 0) return 1;
-
-  int result = n;
-  for( int i = 2; i <= k; ++i ) {
-    result *= (n-i+1);
-    result /= i;
-  }
-  return result;
-}
-
 void FindBestFit(int run,int subrun,int event,const std::vector<std::vector<HoughTransformPoint>>& clusters,const RecoParticle& pfp,const std::vector<std::vector<HitLite>>& hits){
 
   VFitter fitter(true);
