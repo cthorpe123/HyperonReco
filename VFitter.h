@@ -27,6 +27,7 @@
 #include "TH2D.h"
 #include "TCanvas.h"
 #include "TGraphErrors.h"
+#include "TLegend.h"
 
 // Local includes
 //#include "RecoParticle.h"
@@ -51,28 +52,23 @@ namespace hyperonreco {
       void AddData(const std::vector<std::vector<HitLite>>& hits);
       void AddData(const HoughTransformPoint& p);
       void SetGuess(const FittedV& fittedv);
-      void SetEvent(int run,int subrun,int event);
+      void SetEvent(int run,int subrun,int event,int combination=0);
 
-      #ifdef _InsideLArSoft_
-      FittedV DoFit(TVector3 start,std::map<art::Ptr<recob::SpacePoint>,art::Ptr<recob::Hit>> hitspacepointhap) const;
-      #endif
-
-      bool DoFit(FittedV& fittedv);
-      bool DoFitGridSearch(FittedV& fittedv,int points);
-      bool DoFitGridSearch2(FittedV& fittedv,int points);
       bool DoFitGridSearch3(FittedV& fittedv,int points);
       void SetActivePlanes(std::vector<int> i_pl);
 
       void SetROI(double roi_ch,double roi_tick,TVector3 center);
       void SetOutlierCut(double outliercut);
       void SetFitTune(double fittune);
-      //void RemoveOutliers();
       void RemoveOffset(std::vector<HitLite>& hits,TVector3 origin,int plane);
       void RestoreOffset(std::vector<HitLite>& hits,TVector3 origin,int plane);
+      void DrawFit(const FittedV& v,const std::vector<std::vector<HitLite>>& allhits={}) const;
+
+
 
     private:
 
-      int Run,Subrun,Event;
+      int Run,Subrun,Event,Combination;
       std::string RSE;
       bool Draw = false;
 
@@ -88,17 +84,8 @@ namespace hyperonreco {
       FittedV InitialGuess;
       bool InitialGuessSet = false;
 
-      #ifdef _InsideLArSoft_
-      double HitLineSeparation(art::Ptr<recob::Hit> hit,LineWireTick line);
-      std::pair<double,int> FitScore(std::vector<art::Ptr<recob::Hit>> hit_v,FittedV fittedv);
-      #endif
-
-      double HitLineSeparation(const HitLite& hit,const LineWireTick2& line);
-      std::pair<double,int> FitScore(const std::vector<std::vector<HitLite>>& hits,FittedV& fittedv,bool verbose=false);
       std::pair<double,int> FitScore2(const std::vector<std::vector<HitLite>>& hits,FittedV& fittedv,bool verbose=false);
       double HitLineSeparation2(const HitLite& hit,const LineWireTick2& line);
-
-      void DrawFit(const FittedV& v) const;
 
   };
 

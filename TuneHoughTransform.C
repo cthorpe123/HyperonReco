@@ -9,7 +9,7 @@ R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 #include <ctime>    
 #include <chrono>
 
-const int tunes = 500;
+const int tunes = 100;
 std::vector<double> theta_bin_size;
 std::vector<double> r_bin_size;
 std::vector<int> peak_size;
@@ -106,7 +106,7 @@ void TuneHoughTransform(){
           transformer.SetPeakSize(peak_size.at(i));
           transformer.SetPointGrouping(grouping.at(i));
           transformer.SetMaxNeighbourDist(max_neighbour_dist.at(i));
-          transformer.SetChi2Cut(chi2_cut.at(i));
+          //transformer.SetChi2Cut(chi2_cut.at(i));
           transformer.MakeTransform2();
           std::pair<double,double> performance = transformer.GetPerformanceMetrics();
           score.at(i) += performance.first*performance.second;      

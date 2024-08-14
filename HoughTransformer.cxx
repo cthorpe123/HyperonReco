@@ -283,6 +283,7 @@ void HoughTransformer::MakeTransform2(){
   for(std::pair<double,double> result : transform)
     h_Transform->Fill(result.first,result.second);
 
+/*
   if(Draw){
     TCanvas* c = new TCanvas("c","c");
     h_Transform->Draw("colz");
@@ -303,6 +304,7 @@ void HoughTransformer::MakeTransform2(){
 
     delete c;
   }  
+*/
 
 }
 
@@ -414,7 +416,7 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
       if(points_inside > ConvFloor) h_Transform_Conv->SetBinContent(i,j,points_inside);
     }
   }
-
+/*
   if(Draw){
     TCanvas* c = new TCanvas("c","c");
     h_Transform_Conv->Draw("colz");
@@ -423,7 +425,7 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
     c->Clear();
     delete c;
   }
-
+*/
   std::vector<std::vector<int>> bins_x,bins_y;
 
   while(true){   
@@ -511,7 +513,7 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
     }
 
   }
-
+/*
   if(Draw){
     TCanvas* c = new TCanvas("c","c");
     h_Transform_Conv->Draw("colz");
@@ -520,7 +522,7 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
     c->Clear();
     delete c;
   }
-
+*/
   // For each peak, find all the points inside it, and get their corresponding hits
   
   std::vector<int> used_hits;

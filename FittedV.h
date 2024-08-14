@@ -142,6 +142,7 @@ namespace hyperonreco {
 
       double Chi2;
       int NDof;
+      double Asymmetry;
 
       #ifdef _InsideLArSoft_
       std::vector<art::Ptr<recob::Hit>> Hits;
@@ -149,6 +150,9 @@ namespace hyperonreco {
       #endif
 
       std::pair<TGraph*,TGraph*> Make2DVGraphs(int i_pl) const;
+
+      double GetAsymmetry() const;
+      double GetOpeningAngle() const; 
 
   };
 
