@@ -22,7 +22,10 @@ void VFitter::SetEvent(int run,int subrun,int event,int combination){
   Subrun = subrun;
   Event = event;
   Combination = combination;
-  RSE = std::to_string(run) + "_" + std::to_string(subrun) + "_" + std::to_string(event) + "_" + std::to_string(Combination);
+  RSE = std::to_string(run) + "_" + std::to_string(subrun) + "_" + std::to_string(event);
+  RSEC = std::to_string(run) + "_" + std::to_string(subrun) + "_" + std::to_string(event) + "_" + std::to_string(Combination);
+
+  system(("mkdir -p Plots/Event_" + RSE).c_str());
 
 }
 
@@ -444,7 +447,7 @@ void VFitter::DrawFit(const FittedV& v,const std::vector<std::vector<HitLite>>& 
     l->AddEntry((TObject*)0,("Asymmetry=" + std::to_string(v.GetAsymmetry())).c_str(),"");
     l->AddEntry((TObject*)0,("Opening Angle=" + std::to_string(v.GetOpeningAngle())).c_str(),"");
 
-    c->Print(("Plots/Event_" + RSE + "_Plane" + std::to_string(i_pl) + "_Fit.png").c_str());
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEC + "_Plane" + std::to_string(i_pl) + "_Fit.png").c_str());
     p_plot->Clear();
 
     delete g;

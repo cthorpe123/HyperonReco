@@ -52,7 +52,10 @@ void HoughTransformer::SetEvent(int run,int subrun,int event,int pfp){
   Subrun = subrun;
   Event = event;
   Pfp = pfp;
-  RSE = std::to_string(run) + "_" + std::to_string(subrun) + "_" + std::to_string(event) + "_" + std::to_string(Pfp) + "_Plane" + std::to_string(Plane);
+  RSE = std::to_string(run) + "_" + std::to_string(subrun) + "_" + std::to_string(event);
+  RSEP = std::to_string(run) + "_" + std::to_string(subrun) + "_" + std::to_string(event) + "_" + std::to_string(Pfp) + "_Plane" + std::to_string(Plane);
+
+  system(("mkdir -p Plots/Event_" + RSE).c_str());
 
 }
 
@@ -606,7 +609,7 @@ void HoughTransformer::DrawFits(){
   g->SetMarkerSize(0.5);
   g->Draw("AP");
 
-  c->Print(("Plots/Event_" + RSE + "_Data_Tune_" + std::to_string(TuneID) + ".png").c_str());
+  c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_Data_Tune_" + std::to_string(TuneID) + ".png").c_str());
 
   std::vector<TF1*> f_v;
   int ctr = 0;
@@ -623,7 +626,7 @@ void HoughTransformer::DrawFits(){
 
   } 
 
-  c->Print(("Plots/Event_" + RSE + "_Fits_Tune_" + std::to_string(TuneID) + ".png").c_str());
+  c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_Fits_Tune_" + std::to_string(TuneID) + ".png").c_str());
 
   delete c;
 
@@ -674,7 +677,7 @@ std::vector<HoughTransformPoint> HoughTransformer::MakeClusters() const {
     TCanvas* c = new TCanvas("c","c");
 
     g->Draw("AP");
-    c->Print(("Plots/Event_" + RSE + "_Clusters_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_Fits_Tune_" + std::to_string(TuneID) + ".png").c_str());
 
     delete c;
     delete g;

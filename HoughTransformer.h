@@ -57,6 +57,7 @@ namespace hyperonreco {
         int Run,Subrun,Event,Pfp;
         int TuneID = 0;
         std::string RSE;
+        std::string RSEP;
         bool Draw;
 
         std::vector<HitLite> Hits;

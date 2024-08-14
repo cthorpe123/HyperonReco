@@ -70,6 +70,7 @@ namespace hyperonreco {
 
       int Run,Subrun,Event,Combination;
       std::string RSE;
+      std::string RSEC;
       bool Draw = false;
 
       double ROIChannel = 100;

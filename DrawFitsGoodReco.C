@@ -26,7 +26,7 @@ unsigned nChoosek( unsigned n, unsigned k )
   return result;
 }
 
-void FindBestFit(int run,int subrun,int event,const std::vector<std::vector<HoughTransformPoint>>& clusters,const RecoParticle& pfp){
+void FindBestFit(int run,int subrun,int event,const std::vector<std::vector<HoughTransformPoint>>& clusters,const RecoParticle& pfp,const std::vector<std::vector<HitLite>>& hits){
 
   VFitter fitter(true);
   const std::vector<size_t> combos  = {2,3,4,5,6,7};
@@ -40,7 +40,7 @@ void FindBestFit(int run,int subrun,int event,const std::vector<std::vector<Houg
   for(size_t i_pl=0;i_pl<3;i_pl++){
     for(const HoughTransformPoint& cluster : clusters.at(i_pl)){
       if(cluster.Hits.size() > min_hits){
-        std::cout << cluster.Plane << " " << cluster.Hits.size() << std::endl; 
+        //std::cout << cluster.Plane << " " << cluster.Hits.size() << std::endl; 
         clusters_pv.push_back(&cluster); 
       }
     }
@@ -56,7 +56,7 @@ void FindBestFit(int run,int subrun,int event,const std::vector<std::vector<Houg
 
     if(combo > clusters_pv.size()) break;
 
-    std::cout << "combo=" <<  combo << " clusters_pv.size()=" <<  clusters_pv.size() << std::endl;
+    //std::cout << "combo=" <<  combo << " clusters_pv.size()=" <<  clusters_pv.size() << std::endl;
 
     // Make a copy of the vector we can erase elements from as they're used
 
@@ -94,10 +94,10 @@ void FindBestFit(int run,int subrun,int event,const std::vector<std::vector<Houg
 
       if(this_combo_already_tried) continue;
 
-      std::cout << std::endl << "Selected Clusters:" << std::endl;
+      //std::cout << std::endl << "Selected Clusters:" << std::endl;
       //std::vector<std::vector<HoughTransformPoint>> clusters_touse(3);
       for(size_t i=0;i<clusters_pv_touse.size();i++){
-        std::cout << clusters_pv_touse.at(i) << "  " <<  clusters_pv_touse.at(i)->Plane << " " << clusters_pv_touse.at(i)->Hits.size() << std::endl;
+        //std::cout << clusters_pv_touse.at(i) << "  " <<  clusters_pv_touse.at(i)->Plane << " " << clusters_pv_touse.at(i)->Hits.size() << std::endl;
         //clusters_touse.at(clusters_pv_touse.at(i)->Plane).push_back(*(clusters_pv_touse.at(i)));
         fitter.AddData(*(clusters_pv_touse.at(i)));
       }
@@ -106,19 +106,18 @@ void FindBestFit(int run,int subrun,int event,const std::vector<std::vector<Houg
       fitter.SetEvent(run,subrun,event,ctr);
       hyperonreco::FittedV v = hyperonreco::MakeFittedVGuessTrack(pfp);
       fitter.SetGuess(v);
-      fitter.DoFitGridSearch3(v,500); 
-      fitter.DrawFit(v);
+      fitter.DoFitGridSearch3(v,1000); 
+      fitter.DrawFit(v,hits);
       fitter.Reset();
 
       std::cout << "Score = " << v.Chi2/v.NDof/v.NDof << std::endl;
 
-      if(v.Chi2/v.NDof/v.NDof < bestfit){
+      if(v.Chi2/v.NDof/v.NDof < bestfit && v.GetAsymmetry() < 0.9 && v.GetOpeningAngle() < 1.75){
         bestfit = v.Chi2/v.NDof/v.NDof;
         bestfit_ctr = ctr;
       }
 
       already_tried.push_back(clusters_pv_touse);     
-
       ctr++;
 
     }
@@ -131,7 +130,7 @@ void FindBestFit(int run,int subrun,int event,const std::vector<std::vector<Houg
   fitter.SetEvent(run,subrun,event,-1);
   hyperonreco::FittedV v = hyperonreco::MakeFittedVGuessTrack(pfp);
   fitter.SetGuess(v);
-  fitter.DoFitGridSearch3(v,500); 
+  fitter.DoFitGridSearch3(v,1000); 
   fitter.DrawFit(v);
 
 }
@@ -203,7 +202,7 @@ void DrawFitsGoodReco(){
 
     } // i_pl
 
-    FindBestFit(e.run,e.subrun,e.event,clusters,pfps.at(0));
+    FindBestFit(e.run,e.subrun,e.event,clusters,pfps.at(0),hits);
 
     /*
        int ctr=0;
