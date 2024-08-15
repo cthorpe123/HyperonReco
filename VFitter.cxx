@@ -441,21 +441,125 @@ void VFitter::DrawFit(const FittedV& v,const std::vector<std::vector<HitLite>>& 
 
     fit_arms.first->Draw("L same");
     fit_arms.second->Draw("L same");
-
     l->Clear(); 
     //l->AddEntry((TObject*)0,("Chi2/ndof=" + std::to_string(v.Chi2) + " / " + std::to_string(v.NDof) + "^{2} = " + std::to_string(v.Chi2/v.NDof/v.NDof)).c_str(),"");
     l->AddEntry((TObject*)0,("Chi2=" + std::to_string(v.Chi2)).c_str(),"");
     l->AddEntry((TObject*)0,("NDof=" + std::to_string(v.NDof)).c_str(),"");
     l->AddEntry((TObject*)0,("Asymmetry=" + std::to_string(v.GetAsymmetry())).c_str(),"");
     l->AddEntry((TObject*)0,("Opening Angle=" + std::to_string(v.GetOpeningAngle())).c_str(),"");
-
-    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEC + "_Plane" + std::to_string(i_pl) + "_Fit.png").c_str());
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSE + "_Plane" + std::to_string(i_pl) + "_" + std::to_string(Combination) + "_Fit.png").c_str());
     p_plot->Clear();
 
     delete g;
     //delete gm;
 
   }
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void VFitter::DrawFit2(const FittedV& v,const std::vector<std::vector<HitLite>>& allhits) const {
+
+  bool has_allhits = allhits.size() == 3;
+
+  TCanvas* c = new TCanvas("c","c",1400,600);
+  TLegend *l = new TLegend(0.1,0.0,0.9,1.0);
+  l->SetBorderSize(0);
+  l->SetNColumns(2);
+
+  TPad *p_plot_Plane0 = new TPad("pad_Plane0","pad_Plane0",0,0,0.333,0.85);
+  TPad *p_plot_Plane1 = new TPad("pad_Plane1","pad_Plane1",0.333,0,0.666,0.85);
+  TPad *p_plot_Plane2 = new TPad("pad_Plane2","pad_Plane2",0.666,0,1.0,0.85);
+
+  TPad *p_legend = new TPad("pad2","pad2",0,0.85,1,1);
+  p_legend->SetBottomMargin(0);
+  p_legend->SetTopMargin(0.1);
+  p_plot_Plane0->SetTopMargin(0.01);
+  p_plot_Plane1->SetTopMargin(0.01);
+  p_plot_Plane2->SetTopMargin(0.01);
+
+  p_legend->Draw();
+  p_legend->cd();
+  l->Draw();
+  c->cd();
+  p_plot_Plane0->Draw();
+  p_plot_Plane1->Draw();
+  p_plot_Plane2->Draw();
+
+  std::vector<TMultiGraph*> gm;  
+  std::vector<std::pair<TGraph*,TGraph*>> fit_arms; 
+
+  for(int i_pl=0;i_pl<3;i_pl++){
+
+    if(i_pl == 0) p_plot_Plane0->cd();
+    if(i_pl == 1) p_plot_Plane1->cd();
+    if(i_pl == 2) p_plot_Plane2->cd();
+
+    gm.push_back(new TMultiGraph(("Plane"+std::to_string(i_pl)).c_str(),";;"));
+    
+    TGraphErrors* g_allhits = nullptr;
+
+    std::vector<double> channel,tick,width;
+
+    if(has_allhits){
+
+      channel.clear(); 
+      tick.clear();      
+      width.clear();
+        
+      for(HitLite hit : allhits.at(i_pl)){
+        channel.push_back(hit.Channel);
+        tick.push_back(hit.Tick);
+        width.push_back(hit.Width);
+      }
+
+      g_allhits = new TGraphErrors(channel.size(),&(channel[0]),&(tick[0]),0,&(width[0]));
+      g_allhits->SetName("graph2D");
+      g_allhits->SetMarkerColor(1);
+      g_allhits->SetLineColor(1);
+      g_allhits->SetMarkerStyle(20);
+      g_allhits->SetMarkerSize(0.4);
+      gm.back()->Add(g_allhits);
+
+    }
+
+    channel.clear(); 
+    tick.clear();      
+    width.clear();
+
+    for(HitLite hit : Hits.at(i_pl)){
+      channel.push_back(hit.Channel);
+      tick.push_back(hit.Tick);
+      width.push_back(hit.Width);
+    }
+
+    TGraphErrors* g = new TGraphErrors(channel.size(),&(channel[0]),&(tick[0]),0,&(width[0]));
+    g->SetName("graph2D");
+    g->SetMarkerColor(2);
+    g->SetLineColor(2);
+    g->SetMarkerStyle(20);
+    g->SetMarkerSize(0.6);
+
+    gm.back()->Add(g);
+    gm.back()->Draw("AP");
+
+    fit_arms.push_back(v.Make2DVGraphs(i_pl)); 
+
+    fit_arms.back().first->Draw("L same");
+    fit_arms.back().second->Draw("L same");
+
+    c->cd();
+
+  }
+  
+  //l->AddEntry((TObject*)0,("Chi2/ndof=" + std::to_string(v.Chi2) + " / " + std::to_string(v.NDof) + "^{2} = " + std::to_string(v.Chi2/v.NDof/v.NDof)).c_str(),"");
+  l->AddEntry((TObject*)0,("Chi2=" + std::to_string(v.Chi2)).c_str(),"");
+  l->AddEntry((TObject*)0,("NDof=" + std::to_string(v.NDof)).c_str(),"");
+  l->AddEntry((TObject*)0,("Asymmetry=" + std::to_string(v.GetAsymmetry())).c_str(),"");
+  l->AddEntry((TObject*)0,("Opening Angle=" + std::to_string(v.GetOpeningAngle())).c_str(),"");
+
+  c->Print(("Plots/Event_" + RSE + "/Event_" + RSE + "_" + std::to_string(Combination) + "_Fit.png").c_str());
 
 }
 

@@ -63,6 +63,7 @@ namespace hyperonreco {
       void RemoveOffset(std::vector<HitLite>& hits,TVector3 origin,int plane);
       void RestoreOffset(std::vector<HitLite>& hits,TVector3 origin,int plane);
       void DrawFit(const FittedV& v,const std::vector<std::vector<HitLite>>& allhits={}) const;
+      void DrawFit2(const FittedV& v,const std::vector<std::vector<HitLite>>& allhits={}) const;
 
 
 

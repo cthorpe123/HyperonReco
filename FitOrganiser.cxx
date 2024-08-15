@@ -62,7 +62,7 @@ void FitOrganiser::MakeFitList(){
       v.Vertex = TVector3(PFP.X_NoSC,PFP.Y_NoSC,PFP.Z_NoSC);
       Fitter->SetGuess(v);
       Fitter->DoFitGridSearch3(v,1000); 
-      Fitter->DrawFit(v,AllHits);
+      //Fitter->DrawFit2(v,AllHits);
       Fitter->Reset();
 
       ctr++;
@@ -72,10 +72,8 @@ void FitOrganiser::MakeFitList(){
 
   }
 
-
   
-  // Draw the five best fits
-  ctr=-1;
+  ctr=0;
   std::map<double,std::vector<const HoughTransformPoint*>>::iterator it;
   for(it = FitResults.begin();it != FitResults.end();it++){
 
@@ -84,13 +82,10 @@ void FitOrganiser::MakeFitList(){
     FittedV v;
     v.Vertex = TVector3(PFP.X_NoSC,PFP.Y_NoSC,PFP.Z_NoSC);
     Fitter->SetGuess(v);
-    Fitter->DoFitGridSearch3(v,2000); 
-    Fitter->DrawFit(v,AllHits);
+    Fitter->DoFitGridSearch3(v,1000); 
+    Fitter->DrawFit2(v,AllHits);
     Fitter->Reset();
-
-    ctr--;
-    if(ctr < -5) break;
-
+    ctr++;
   }
 
 

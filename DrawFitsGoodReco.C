@@ -28,7 +28,7 @@ void DrawFitsGoodReco(){
 
   // Select the event we want to analyse
   int ievent=0;
-  while(ievent<E.GetNEvents() && ievent < 10){
+  while(ievent<E.GetNEvents() && ievent < 1){
     Event e = E.GetEvent(ievent);
 
     std::cout << ievent << "/" << E.GetNEvents() << std::endl;

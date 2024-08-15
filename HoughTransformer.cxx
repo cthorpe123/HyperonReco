@@ -677,7 +677,7 @@ std::vector<HoughTransformPoint> HoughTransformer::MakeClusters() const {
     TCanvas* c = new TCanvas("c","c");
 
     g->Draw("AP");
-    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_Fits_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_Clusters_Tune_" + std::to_string(TuneID) + ".png").c_str());
 
     delete c;
     delete g;
