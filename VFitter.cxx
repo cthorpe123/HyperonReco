@@ -268,7 +268,7 @@ bool VFitter::DoFitGridSearch3(FittedV& fittedv,int points){
   for(size_t i_pl=0;i_pl<3;i_pl++) RemoveOffset(Hits.at(i_pl),InitialGuess.Vertex,i_pl);
   TRandom2* r = new TRandom2();
 
-  std::pair<double,double> vertex_range = {-5.0,5.0};
+  std::pair<double,double> vertex_range = {-3.0,3.0};
 
   double bestfit_score=1e10;
   FittedV bestfit_v;
@@ -443,7 +443,9 @@ void VFitter::DrawFit(const FittedV& v,const std::vector<std::vector<HitLite>>& 
     fit_arms.second->Draw("L same");
 
     l->Clear(); 
-    l->AddEntry((TObject*)0,("Chi2/ndof=" + std::to_string(v.Chi2) + " / " + std::to_string(v.NDof) + "^{2} = " + std::to_string(v.Chi2/v.NDof/v.NDof)).c_str(),"");
+    //l->AddEntry((TObject*)0,("Chi2/ndof=" + std::to_string(v.Chi2) + " / " + std::to_string(v.NDof) + "^{2} = " + std::to_string(v.Chi2/v.NDof/v.NDof)).c_str(),"");
+    l->AddEntry((TObject*)0,("Chi2=" + std::to_string(v.Chi2)).c_str(),"");
+    l->AddEntry((TObject*)0,("NDof=" + std::to_string(v.NDof)).c_str(),"");
     l->AddEntry((TObject*)0,("Asymmetry=" + std::to_string(v.GetAsymmetry())).c_str(),"");
     l->AddEntry((TObject*)0,("Opening Angle=" + std::to_string(v.GetOpeningAngle())).c_str(),"");
 

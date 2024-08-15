@@ -7,6 +7,7 @@
 // local includes
 #include "VFitter.h"
 #include "Objects.h"
+#include "RecoParticle.h"
 
 namespace hyperonreco {
 
@@ -28,13 +29,14 @@ namespace hyperonreco {
 
     public:
 
-      FitOrganiser(int run,int subrun,int event,int pfp,const std::vector<std::vector<HoughTransformPoint>>& clusters,std::vector<std::vector<HitLite>> allhits);
+      FitOrganiser(int run,int subrun,int event,RecoParticle pfp,const std::vector<std::vector<HoughTransformPoint>>& clusters,std::vector<std::vector<HitLite>> allhits);
       std::map<double,std::vector<const HoughTransformPoint*>> FitResults;
       void MakeFitList();
 
     private:
 
-      const int Run,Subrun,Event,PFP;
+      const int Run,Subrun,Event;
+      const RecoParticle PFP;
       size_t MinHits = 5;
       std::vector<int> NClusters = {3,4,5,6,7};
 

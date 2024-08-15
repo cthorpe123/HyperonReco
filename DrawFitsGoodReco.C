@@ -9,118 +9,9 @@ R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 #include "VFitter.h"
 #include <ctime>    
 #include <chrono>
+#include "FitOrganiser.h"
 
 using namespace hyperonreco;
-
-void FindBestFit(int run,int subrun,int event,const std::vector<std::vector<HoughTransformPoint>>& clusters,const RecoParticle& pfp,const std::vector<std::vector<HitLite>>& hits){
-
-  VFitter fitter(true);
-  const std::vector<size_t> combos  = {2,3,4,5,6,7};
-  const int min_hits = 5;
-
-  double bestfit = 1e10;
-  int bestfit_ctr=-1;
-
-  // Flatten the input vector out, with pointers to the original data
-  std::vector<const HoughTransformPoint*> clusters_pv;
-  for(size_t i_pl=0;i_pl<3;i_pl++){
-    for(const HoughTransformPoint& cluster : clusters.at(i_pl)){
-      if(cluster.Hits.size() > min_hits){
-        //std::cout << cluster.Plane << " " << cluster.Hits.size() << std::endl; 
-        clusters_pv.push_back(&cluster); 
-      }
-    }
-  }
-
-  TRandom2* r = new TRandom2();
-
-  int ctr=0;
-
-  std::vector<std::vector<const HoughTransformPoint*>> already_tried;
-
-  for(size_t combo : combos){
-
-    if(combo > clusters_pv.size()) break;
-
-    //std::cout << "combo=" <<  combo << " clusters_pv.size()=" <<  clusters_pv.size() << std::endl;
-
-    // Make a copy of the vector we can erase elements from as they're used
-
-    for(int c=0;c<nChoosek(clusters_pv.size(),combo)*2;c++){
-
-      std::vector<const HoughTransformPoint*> clusters_pv_cp = clusters_pv;
-      std::vector<const HoughTransformPoint*> clusters_pv_touse; 
-      while(clusters_pv_touse.size() < combo){
-        size_t pos = r->Uniform(-0.5,clusters_pv_cp.size()-0.5);
-        clusters_pv_touse.push_back(clusters_pv_cp.at(pos));
-        clusters_pv_cp.erase(clusters_pv_cp.begin()+pos);   
-      }
-
-      // Check clusters don't all belong to the same plane
-      int pl=clusters_pv_touse.at(0)->Plane;
-      bool two_planes = false;
-      for(size_t i=1;i<clusters_pv_touse.size();i++)
-        if(clusters_pv_touse.at(i)->Plane != pl) two_planes = true;
-
-      if(!two_planes) continue;
-
-      // Check we haven't already tried this combination
-      bool this_combo_already_tried = false;
-      for(std::vector<const HoughTransformPoint*> points : already_tried){  
-        std::vector<bool> found(clusters_pv_touse.size(),false);
-        for(size_t i_p=0;i_p<clusters_pv_touse.size();i_p++)
-          if(std::find(points.begin(),points.end(),clusters_pv_touse.at(i_p)) != points.end())
-            found.at(i_p) = true;
-
-        // if all elements of found are true, we know we've already tried this combination
-        if(std::find(found.begin(),found.end(),false) == found.end())
-          this_combo_already_tried = true;
-
-      }
-
-      if(this_combo_already_tried) continue;
-
-      //std::cout << std::endl << "Selected Clusters:" << std::endl;
-      //std::vector<std::vector<HoughTransformPoint>> clusters_touse(3);
-      for(size_t i=0;i<clusters_pv_touse.size();i++){
-        //std::cout << clusters_pv_touse.at(i) << "  " <<  clusters_pv_touse.at(i)->Plane << " " << clusters_pv_touse.at(i)->Hits.size() << std::endl;
-        //clusters_touse.at(clusters_pv_touse.at(i)->Plane).push_back(*(clusters_pv_touse.at(i)));
-        fitter.AddData(*(clusters_pv_touse.at(i)));
-      }
-
-
-      fitter.SetEvent(run,subrun,event,ctr);
-      hyperonreco::FittedV v = hyperonreco::MakeFittedVGuessTrack(pfp);
-      fitter.SetGuess(v);
-      fitter.DoFitGridSearch3(v,1000); 
-      fitter.DrawFit(v,hits);
-      fitter.Reset();
-
-      std::cout << "Score = " << v.Chi2/v.NDof/v.NDof << std::endl;
-
-      if(v.Chi2/v.NDof/v.NDof < bestfit && v.GetAsymmetry() < 0.9 && v.GetOpeningAngle() < 1.75){
-        bestfit = v.Chi2/v.NDof/v.NDof;
-        bestfit_ctr = ctr;
-      }
-
-      already_tried.push_back(clusters_pv_touse);     
-      ctr++;
-
-    }
-
-  }
-
-  for(size_t i=0;i<already_tried.at(bestfit_ctr).size();i++)
-    fitter.AddData(*(already_tried.at(bestfit_ctr).at(i)));
-
-  fitter.SetEvent(run,subrun,event,-1);
-  hyperonreco::FittedV v = hyperonreco::MakeFittedVGuessTrack(pfp);
-  fitter.SetGuess(v);
-  fitter.DoFitGridSearch3(v,1000); 
-  fitter.DrawFit(v);
-
-}
-
 
 // Apply Hough transform to make clusters on already reconstructed events, draw fitted Vs to resulting clusters
 
@@ -188,7 +79,10 @@ void DrawFitsGoodReco(){
 
     } // i_pl
 
-    FindBestFit(e.run,e.subrun,e.event,clusters,pfps.at(0),hits);
+    //FindBestFit(e.run,e.subrun,e.event,clusters,pfps.at(0),hits);
+    FitOrganiser organiser(e.run,e.subrun,e.event,pfps.at(0),clusters,hits);
+    organiser.MakeFitList();
+
 
     /*
        int ctr=0;

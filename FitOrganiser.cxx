@@ -7,7 +7,7 @@ namespace hyperonreco {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-FitOrganiser::FitOrganiser(int run,int subrun,int event,int pfp,const std::vector<std::vector<HoughTransformPoint>>& clusters,std::vector<std::vector<HitLite>> allhits) :
+FitOrganiser::FitOrganiser(int run,int subrun,int event,RecoParticle pfp,const std::vector<std::vector<HoughTransformPoint>>& clusters,std::vector<std::vector<HitLite>> allhits) :
     Run(run),Subrun(subrun),Event(event),PFP(pfp),AllHits(allhits)
 {
 
@@ -29,6 +29,7 @@ FitOrganiser::FitOrganiser(int run,int subrun,int event,int pfp,const std::vecto
 
 void FitOrganiser::MakeFitList(){
 
+  int ctr=0;
   for(size_t nclusters : NClusters){
 
     if(nclusters > ClustersFlat.size()) break;
@@ -55,20 +56,43 @@ void FitOrganiser::MakeFitList(){
       if(!two_planes || AlreadyTested(clusters_touse)) continue;
 
       for(size_t i=0;i<clusters_touse.size();i++) Fitter->AddData(*(clusters_touse.at(i)));
-/*
-      Fitter.SetEvent(run,subrun,event,ctr);
-      hyperonreco::FittedV v = hyperonreco::MakeFittedVGuessTrack(pfp);
-      fitter.SetGuess(v);
-      fitter.DoFitGridSearch3(v,1000); 
-      fitter.DrawFit(v,hits);
-      fitter.Reset();
 
-      std::cout << "Score = " << v.Chi2/v.NDof/v.NDof << std::endl;
-*/
+      Fitter->SetEvent(Run,Subrun,Event,ctr);
+      FittedV v;
+      v.Vertex = TVector3(PFP.X_NoSC,PFP.Y_NoSC,PFP.Z_NoSC);
+      Fitter->SetGuess(v);
+      Fitter->DoFitGridSearch3(v,1000); 
+      Fitter->DrawFit(v,AllHits);
+      Fitter->Reset();
+
+      ctr++;
+      FitResults[v.Chi2/pow(v.NDof,2.5)] = clusters_touse; 
 
     }
 
   }
+
+
+  
+  // Draw the five best fits
+  ctr=-1;
+  std::map<double,std::vector<const HoughTransformPoint*>>::iterator it;
+  for(it = FitResults.begin();it != FitResults.end();it++){
+
+    Fitter->SetEvent(Run,Subrun,Event,ctr);
+    for(size_t i=0;i<it->second.size();i++) Fitter->AddData(*(it->second.at(i)));
+    FittedV v;
+    v.Vertex = TVector3(PFP.X_NoSC,PFP.Y_NoSC,PFP.Z_NoSC);
+    Fitter->SetGuess(v);
+    Fitter->DoFitGridSearch3(v,2000); 
+    Fitter->DrawFit(v,AllHits);
+    Fitter->Reset();
+
+    ctr--;
+    if(ctr < -5) break;
+
+  }
+
 
 }
 
@@ -76,10 +100,10 @@ void FitOrganiser::MakeFitList(){
 
 bool FitOrganiser::AlreadyTested(const std::vector<const HoughTransformPoint*>& clusters){
 
-  std::map<double,std::vector<const HoughTransformPoint*>>::iterator it = FitResults.begin();
+  std::map<double,std::vector<const HoughTransformPoint*>>::iterator it;
 
-  while(it != FitResults.end()){
-
+  for(it = FitResults.begin();it != FitResults.end();it++){
+    
     std::vector<bool> found(clusters.size(),false);
 
     if(it->second.size() != clusters.size()) continue;
@@ -92,7 +116,6 @@ bool FitOrganiser::AlreadyTested(const std::vector<const HoughTransformPoint*>& 
     if(std::find(found.begin(),found.end(),false) == found.end())
       return true;
 
-     it++;
   }
 
   return false;
