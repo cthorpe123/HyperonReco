@@ -1,4 +1,4 @@
-R__LOAD_LIBRARY(libVFitter.so);
+R__LOAD_LIBRARY(lib/libVFitter.so);
 R__LOAD_LIBRARY($HYP_TOP/lib/libHyperon.so);
 R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 
@@ -28,10 +28,10 @@ void DrawFitsGoodReco(){
 
   // Select the event we want to analyse
   int ievent=0;
-  while(ievent<E.GetNEvents() && ievent < 1){
+  while(ievent<E.GetNEvents()){
     Event e = E.GetEvent(ievent);
 
-    std::cout << ievent << "/" << E.GetNEvents() << std::endl;
+    //std::cout << ievent << "/" << E.GetNEvents() << std::endl;
     ievent++;
 
     //if(e.run != 6999 || e.subrun != 45 || e.event != 2285) continue;
@@ -53,15 +53,15 @@ void DrawFitsGoodReco(){
 
     if(!has_proton || !has_pion) continue;
 
-    std::vector<std::vector<hyperonreco::HitLite>> hits(3);
+    std::vector<std::vector<HitLite>> hits(3);
 
     for(size_t i_pfp=0;i_pfp<pfps.size();i_pfp++){ 
       RecoParticle pfp = pfps.at(i_pfp);
-      hyperonreco::AddHits(hits,pfp.HitChannels,pfp.HitTicks,pfp.HitWidths,pfp.HitTrackIDs,pfp.HitPDGs);
-      hyperonreco::KeepHitsInROI(TVector3(pfp.X_NoSC,pfp.Y_NoSC,pfp.Z_NoSC),hits,roi_size_ch,roi_size_tick);
+      AddHits(hits,pfp.HitChannels,pfp.HitTicks,pfp.HitWidths,pfp.HitTrackIDs,pfp.HitPDGs);
+      KeepHitsInROI(TVector3(pfp.X_NoSC,pfp.Y_NoSC,pfp.Z_NoSC),hits,roi_size_ch,roi_size_tick);
     }
 
-    std::vector<std::vector<hyperonreco::HoughTransformPoint>> clusters(3);
+    std::vector<std::vector<HoughTransformPoint>> clusters(3);
 
     for(size_t i_pl=0;i_pl<3;i_pl++){
 
@@ -71,55 +71,17 @@ void DrawFitsGoodReco(){
       double or_ch = vertex_ch_tick.first;
       double or_ti = vertex_ch_tick.second;
 
-      hyperonreco::HoughTransformer transformer(hits.at(i_pl),i_pl,vertex_ch_tick.first,vertex_ch_tick.second,true);
+      HoughTransformer transformer(hits.at(i_pl),i_pl,vertex_ch_tick.first,vertex_ch_tick.second,true);
       transformer.SetEvent(e.run,e.subrun,e.event);   
       transformer.MakeTransform2();
-      std::vector<hyperonreco::HoughTransformPoint> cluster = transformer.MakeClusters();
+      std::vector<HoughTransformPoint> cluster = transformer.MakeClusters();
       clusters.at(i_pl) = cluster;
 
     } // i_pl
 
     //FindBestFit(e.run,e.subrun,e.event,clusters,pfps.at(0),hits);
-    FitOrganiser organiser(e.run,e.subrun,e.event,pfps.at(0),clusters,hits);
-    organiser.MakeFitList();
-
-
-    /*
-       int ctr=0;
-       VFitter fitter(true);
-
-       double bestfit = 1e10;
-       int bestfit_ctr=-1;
-
-       for(HoughTransformPoint cluster_Plane0 : clusters.at(0)){
-       if(cluster_Plane0.Hits.size() < 5) continue;        
-       for(HoughTransformPoint cluster_Plane1 : clusters.at(1)){
-       if(cluster_Plane1.Hits.size() < 5) continue;        
-       for(HoughTransformPoint cluster_Plane2 : clusters.at(2)){
-       if(cluster_Plane2.Hits.size() < 5) continue;        
-
-       fitter.SetEvent(e.run,e.subrun,e.event,ctr);   
-       hyperonreco::FittedV v = hyperonreco::MakeFittedVGuessTrack(pfps.at(0));
-       fitter.AddData(cluster_Plane0);
-       fitter.AddData(cluster_Plane1);
-       fitter.AddData(cluster_Plane2);
-       fitter.SetGuess(v);
-       fitter.DoFitGridSearch3(v,5000); 
-       fitter.DrawFit(v,hits);
-       fitter.Reset();
-
-       if(v.Chi2/v.NDof/v.NDof < bestfit){
-       bestfit = v.Chi2/v.NDof/v.NDof;
-       bestfit_ctr = ctr;
-       }
-
-       ctr++;
-       }
-       }
-       }
-
-       std::cout << "Best fit: " << bestfit_ctr << std::endl;
-       */
+    //FitOrganiser organiser(e.run,e.subrun,e.event,pfps.at(0),clusters,hits);
+    //organiser.MakeFitList();
 
   } // ievent
 

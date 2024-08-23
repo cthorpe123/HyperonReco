@@ -1,4 +1,4 @@
-R__LOAD_LIBRARY(libVFitter.so);
+R__LOAD_LIBRARY(lib/libVFitter.so);
 R__LOAD_LIBRARY($HYP_TOP/lib/libHyperon.so);
 R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 
@@ -7,7 +7,7 @@ R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 
 void TestHoughTransform(){
 
-  const std::string filename = "HyperonTrees_Background.root";
+  const std::string filename = "GoodReco.root";
 
   EventAssembler E(false);
   E.SetFile(filename,"Background");

@@ -30,14 +30,16 @@ namespace hyperonreco {
     public:
 
       FitOrganiser(int run,int subrun,int event,RecoParticle pfp,const std::vector<std::vector<HoughTransformPoint>>& clusters,std::vector<std::vector<HitLite>> allhits);
-      std::map<double,std::vector<const HoughTransformPoint*>> FitResults;
+      std::map<double,std::pair<std::vector<const HoughTransformPoint*>,FittedV>> FitResults;
       void MakeFitList();
 
     private:
 
       const int Run,Subrun,Event;
       const RecoParticle PFP;
+      int NThrows = 1000;
       size_t MinHits = 5;
+      std::pair<double,double> OpeningAngleRange = {0.15,1.8};
       std::vector<int> NClusters = {3,4,5,6,7};
 
       std::vector<const HoughTransformPoint*> ClustersFlat; 

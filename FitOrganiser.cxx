@@ -29,7 +29,6 @@ FitOrganiser::FitOrganiser(int run,int subrun,int event,RecoParticle pfp,const s
 
 void FitOrganiser::MakeFitList(){
 
-  int ctr=0;
   for(size_t nclusters : NClusters){
 
     if(nclusters > ClustersFlat.size()) break;
@@ -57,37 +56,34 @@ void FitOrganiser::MakeFitList(){
 
       for(size_t i=0;i<clusters_touse.size();i++) Fitter->AddData(*(clusters_touse.at(i)));
 
-      Fitter->SetEvent(Run,Subrun,Event,ctr);
+      //Fitter->SetEvent(Run,Subrun,Event,ctr);
       FittedV v;
       v.Vertex = TVector3(PFP.X_NoSC,PFP.Y_NoSC,PFP.Z_NoSC);
       Fitter->SetGuess(v);
-      Fitter->DoFitGridSearch3(v,1000); 
-      //Fitter->DrawFit2(v,AllHits);
+      bool converged = Fitter->DoFitGridSearch3(v,NThrows); 
+      //bool converged = Fitter->DoFit(v); 
       Fitter->Reset();
 
-      ctr++;
-      FitResults[v.Chi2/pow(v.NDof,2.5)] = clusters_touse; 
+      std::cout << "v.GetOpeningAngle()=" << v.GetOpeningAngle() << std::endl;
+
+      if(!converged || v.GetOpeningAngle() < OpeningAngleRange.first || v.GetOpeningAngle() > OpeningAngleRange.second) continue;
+
+      FitResults[v.Chi2/pow(v.NDof,4)] = std::make_pair(clusters_touse,v); 
 
     }
 
   }
-
   
-  ctr=0;
-  std::map<double,std::vector<const HoughTransformPoint*>>::iterator it;
+  int ctr=0;
+  std::map<double,std::pair<std::vector<const HoughTransformPoint*>,FittedV>>::iterator it;
   for(it = FitResults.begin();it != FitResults.end();it++){
-
     Fitter->SetEvent(Run,Subrun,Event,ctr);
-    for(size_t i=0;i<it->second.size();i++) Fitter->AddData(*(it->second.at(i)));
-    FittedV v;
-    v.Vertex = TVector3(PFP.X_NoSC,PFP.Y_NoSC,PFP.Z_NoSC);
-    Fitter->SetGuess(v);
-    Fitter->DoFitGridSearch3(v,1000); 
-    Fitter->DrawFit2(v,AllHits);
+    for(size_t i=0;i<it->second.first.size();i++) Fitter->AddData(*(it->second.first.at(i)));
+    Fitter->DrawFit2(it->second.second,AllHits);
     Fitter->Reset();
     ctr++;
-  }
-
+    if(ctr > 10) break;
+  }  
 
 }
 
@@ -95,16 +91,18 @@ void FitOrganiser::MakeFitList(){
 
 bool FitOrganiser::AlreadyTested(const std::vector<const HoughTransformPoint*>& clusters){
 
-  std::map<double,std::vector<const HoughTransformPoint*>>::iterator it;
+  std::map<double,std::pair<std::vector<const HoughTransformPoint*>,FittedV>>::iterator it;
 
   for(it = FitResults.begin();it != FitResults.end();it++){
-    
+
+    const std::vector<const HoughTransformPoint*>& previous_fit_clusters = it->second.first;
+
     std::vector<bool> found(clusters.size(),false);
 
-    if(it->second.size() != clusters.size()) continue;
+    if(previous_fit_clusters.size() != clusters.size()) continue;
 
     for(size_t i_p=0;i_p<clusters.size();i_p++)
-      if(std::find(it->second.begin(),it->second.end(),clusters.at(i_p)) != it->second.end())
+      if(std::find(previous_fit_clusters.begin(),previous_fit_clusters.end(),clusters.at(i_p)) != previous_fit_clusters.end())
         found.at(i_p) = true;
 
     // if all elements of found are true, we know we've already tried this combination

@@ -259,6 +259,95 @@ double VFitter::HitLineSeparation2(const HitLite& hit,const LineWireTick2& line)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Use minimizer to do fitting 
+
+bool VFitter::DoFit(FittedV& fittedv){
+
+  //std::cout << "Starting grid search 3" << std::endl;
+
+  for(size_t i_pl=0;i_pl<3;i_pl++) RemoveOffset(Hits.at(i_pl),InitialGuess.Vertex,i_pl);
+
+  FittedV bestfit_v;
+
+  int points_suc = 0;
+
+  ROOT::Math::Functor min = ROOT::Math::Functor( [&] (const double *coeff ){
+
+      //std::cout << "Evaluating fit function" << std::endl;
+
+      FittedV v;
+      v.Vertex = fittedv.Vertex;
+      v.Arm1Theta = coeff[0];
+      v.Arm1Phi = coeff[1];
+      v.Arm2Theta = coeff[2];
+      v.Arm2Phi = coeff[3];
+      v.Vertex = TVector3(coeff[4],coeff[5],coeff[6]);
+
+      /*
+         std::cout << "Vertex: " << v.Vertex.X() << "  " << v.Vertex.Y() << "  " << v.Vertex.Z() << std::endl;
+         std::cout << "Arm 1: " << v.GetArm1Dir().X() << "  " << v.GetArm1Dir().Y() << "  " << v.GetArm1Dir().Z() << std::endl;
+         std::cout << "Arm 2: " << v.GetArm2Dir().X() << "  " << v.GetArm2Dir().Y() << "  " << v.GetArm2Dir().Z() << std::endl;
+         */
+
+      std::pair<double,int> FitVal = FitScore2(Hits,v);
+
+      return FitVal.first/1e8;
+
+  } , 7);
+
+  std::unique_ptr< ROOT::Math::Minimizer > fMinimizer = std::unique_ptr<ROOT::Math::Minimizer>
+    ( ROOT::Math::Factory::CreateMinimizer( "Minuit2", "Migrad" ) );
+
+  fMinimizer->SetMaxFunctionCalls(1000);
+  fMinimizer->SetTolerance( 0.001 );
+  fMinimizer->SetVariable(0,"Arm 1 Theta",InitialGuess.Arm1Theta,0.01);
+  fMinimizer->SetVariable(1,"Arm 1 Phi",InitialGuess.Arm1Phi,0.01);
+  fMinimizer->SetVariable(2,"Arm 2 Theta",InitialGuess.Arm2Theta,0.01);
+  fMinimizer->SetVariable(3,"Arm 2 Phi",InitialGuess.Arm2Phi,0.01);
+  fMinimizer->SetVariable(4,"Vertex X",0.0,0.05);
+  fMinimizer->SetVariable(5,"Vertex Y",0.0,0.05);
+  fMinimizer->SetVariable(6,"Vertex Z",0.0,0.05);
+
+  fMinimizer->SetFunction(min);
+  fMinimizer->Minimize();
+
+  if(fMinimizer->Status() != 0) std::cout << "Minimization did not converge" << std::endl;
+  else std::cout << "Minimization succeeded" << std::endl;
+
+  points_suc++;
+
+  bestfit_v.Arm1Theta = fMinimizer->X()[0];
+  bestfit_v.Arm1Phi = fMinimizer->X()[1];
+  bestfit_v.Arm2Theta = fMinimizer->X()[2];
+  bestfit_v.Arm2Phi = fMinimizer->X()[3];
+  bestfit_v.Vertex = TVector3(fMinimizer->X()[4],fMinimizer->X()[5],fMinimizer->X()[6]);
+
+  std::pair<double,int> FitVal = FitScore2(Hits,fittedv);
+
+  //std::cout << points_suc << "/" << points << std::endl;
+
+  FitScore2(Hits,bestfit_v,true);
+
+  fittedv = bestfit_v;
+  fittedv.Vertex = bestfit_v.Vertex + InitialGuess.Vertex;
+/*
+  std::cout << "Best Fit:" << std::endl;
+  std::cout << "Vertex: " << bestfit_v.Vertex.X() << "  " << bestfit_v.Vertex.Y() <<"  " << bestfit_v.Vertex.Z() << std::endl;
+  std::cout << "Arm 1: theta=" << bestfit_v.Arm1Theta << "  phi=" << bestfit_v.Arm1Phi << std::endl;
+  std::cout << "Arm 2: theta=" << bestfit_v.Arm2Theta << "  phi=" << bestfit_v.Arm2Phi << std::endl;
+  std::cout << "Score=" << bestfit_v.Chi2 << "/"  << bestfit_v.NDof << "=" << bestfit_v.Chi2/bestfit_v.NDof << std::endl;
+*/
+
+  for(size_t i_pl=0;i_pl<3;i_pl++) RestoreOffset(Hits.at(i_pl),InitialGuess.Vertex,i_pl);
+
+  //if(Draw) DrawFit(fittedv);
+
+  return fMinimizer->Status() == 0;
+
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Hybrid - grid seach for vertex but use minimizer to find angles
 
 bool VFitter::DoFitGridSearch3(FittedV& fittedv,int points){
@@ -556,6 +645,7 @@ void VFitter::DrawFit2(const FittedV& v,const std::vector<std::vector<HitLite>>&
   //l->AddEntry((TObject*)0,("Chi2/ndof=" + std::to_string(v.Chi2) + " / " + std::to_string(v.NDof) + "^{2} = " + std::to_string(v.Chi2/v.NDof/v.NDof)).c_str(),"");
   l->AddEntry((TObject*)0,("Chi2=" + std::to_string(v.Chi2)).c_str(),"");
   l->AddEntry((TObject*)0,("NDof=" + std::to_string(v.NDof)).c_str(),"");
+  l->AddEntry((TObject*)0,("Score=" + std::to_string(v.Chi2/pow(v.NDof,4))).c_str(),"");
   l->AddEntry((TObject*)0,("Asymmetry=" + std::to_string(v.GetAsymmetry())).c_str(),"");
   l->AddEntry((TObject*)0,("Opening Angle=" + std::to_string(v.GetOpeningAngle())).c_str(),"");
 

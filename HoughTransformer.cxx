@@ -234,11 +234,16 @@ void HoughTransformer::MakeTransform2(){
     if(!nearest_neighbors.size()) continue;
 
     std::pair<double,double> line = GetLine(nearest_neighbors);
-   
+ 
+    if(line.first < 0){
+      line.first = abs(line.first); 
+      if(line.second < 0) line.second += 3.1415;
+      if(line.second > 0) line.second -= 3.1415;
+    }
+
     if(line.second < 3.1415/2) line.second += 3.1415;
     if(line.second > 3.1415/2) line.second -= 3.1415;
-
-    /* 
+    
     // std::cout << std::endl;
     std::vector<double> channel,tick;
     for(HitLite hit : nearest_neighbors){
@@ -246,8 +251,8 @@ void HoughTransformer::MakeTransform2(){
       channel.push_back(hit.Channel);
       tick.push_back(hit.Tick);
     }
-    //std::cout << "r=" << line.first << "  theta=" << line.second << std::endl;
-
+    //std::cout <<  line.first << "  " << line.second << std::endl;
+/*
     TCanvas* c = new TCanvas("c","c");
     TGraph* g = new TGraph(channel.size(),&(channel[0]),&(tick[0]));
     TF1* f = new TF1("f","-(cos([1])/sin([1]))*x + [0]/sin([1])",-100,100);
@@ -257,14 +262,19 @@ void HoughTransformer::MakeTransform2(){
     g->SetMarkerStyle(20);
     g->Draw("AP");
     f->Draw("L same"); 
-    c->Print(("Plots/Event_" + RSE + "_Group_" + std::to_string(i) + ".png").c_str());
- 
+     
+    TLegend* l = new TLegend(0.7,0.7,0.9,0.9);        
+    l->AddEntry((TObject*)0,("R=" + std::to_string(line.first)).c_str(),"");
+    l->AddEntry((TObject*)0,("Theta=" + std::to_string(line.second)).c_str(),"");
+    l->Draw();
+
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_Group_" + std::to_string(i) + ".png").c_str());
  
     delete g;
     delete f;
     delete c;
-    */
-
+    delete l;
+*/
     r_min = std::min(r_min,line.first);
     r_max = std::max(r_max,line.first);
     theta_min = std::min(theta_min,line.second);
@@ -286,13 +296,9 @@ void HoughTransformer::MakeTransform2(){
   for(std::pair<double,double> result : transform)
     h_Transform->Fill(result.first,result.second);
 
-/*
+
   if(Draw){
     TCanvas* c = new TCanvas("c","c");
-    h_Transform->Draw("colz");
-    h_Transform->SetStats(0);
-    c->Print(("Plots/Event_" + RSE + "_HT_Tune_" + std::to_string(TuneID) + ".png").c_str());
-    c->Clear();
  
     std::vector<double> r,theta;
     for(HoughTransformPoint point : Transform){
@@ -303,11 +309,12 @@ void HoughTransformer::MakeTransform2(){
     TGraph* g = new TGraph(r.size(),&(r[0]),&(theta[0]));
     g->Draw("AP");
     g->SetMarkerSize(0.3);
-    c->Print(("Plots/Event_" + RSE + "_HT_Scatter_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    g->SetMarkerSize(20);
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Scatter_Tune_" + std::to_string(TuneID) + ".png").c_str());
 
     delete c;
   }  
-*/
+
 
 }
 
@@ -419,16 +426,16 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
       if(points_inside > ConvFloor) h_Transform_Conv->SetBinContent(i,j,points_inside);
     }
   }
-/*
+
   if(Draw){
     TCanvas* c = new TCanvas("c","c");
     h_Transform_Conv->Draw("colz");
     h_Transform_Conv->SetStats(0);
-    c->Print(("Plots/Event_" + RSE + "_HT_Conv_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Conv_Tune_" + std::to_string(TuneID) + ".png").c_str());
     c->Clear();
     delete c;
   }
-*/
+
   std::vector<std::vector<int>> bins_x,bins_y;
 
   while(true){   
@@ -516,16 +523,16 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
     }
 
   }
-/*
+
   if(Draw){
     TCanvas* c = new TCanvas("c","c");
     h_Transform_Conv->Draw("colz");
     h_Transform_Conv->SetStats(0);
-    c->Print(("Plots/Event_" + RSE + "_HT_Islands_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Print(("Plots/Event_" + RSE +"/Event_" + RSEP + "_HT_Islands_Tune_" + std::to_string(TuneID) + ".png").c_str());
     c->Clear();
     delete c;
   }
-*/
+
   // For each peak, find all the points inside it, and get their corresponding hits
   
   std::vector<int> used_hits;

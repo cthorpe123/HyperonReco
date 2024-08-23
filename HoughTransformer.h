@@ -19,6 +19,7 @@
 #include "TGraphErrors.h"
 #include "TF1.h"
 #include "TMultiGraph.h"
+#include "TLegend.h"
 
 // local includes
 #include "Position_To_Wire.h" 
@@ -67,9 +68,9 @@ namespace hyperonreco {
 
         // Tuning parameters
         double RBinSize = 3.7;
-        double ThetaBinSize = 0.18;
+        double ThetaBinSize = 0.2;
         int PeakSize = 1;
-        int PointGrouping = 4;
+        int PointGrouping = 6;
         int ConvFloor = 2;
         double MaxNeighbourDist2 = 11*11;
 

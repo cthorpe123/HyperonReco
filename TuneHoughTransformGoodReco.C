@@ -1,4 +1,4 @@
-R__LOAD_LIBRARY(libVFitter.so);
+R__LOAD_LIBRARY(lib/libVFitter.so);
 R__LOAD_LIBRARY($HYP_TOP/lib/libHyperon.so);
 R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 
