@@ -20,8 +20,8 @@ HoughTransformer::HoughTransformer(std::vector<HitLite> hits,int plane,double or
  
   Minimizer = std::unique_ptr<ROOT::Math::Minimizer>( ROOT::Math::Factory::CreateMinimizer( "Minuit2", "Migrad" ) );
 
-  Minimizer->SetMaxFunctionCalls(1000);
-  Minimizer->SetTolerance(0.01);
+  Minimizer->SetMaxFunctionCalls(5000);
+  Minimizer->SetTolerance(0.001);
   Minimizer->SetFunction(Func);
 
   SubtractOffset(Hits);
@@ -117,6 +117,14 @@ void HoughTransformer::SetMaxNeighbourDist(double dist){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void HoughTransformer::SetVerbosity(int verb){
+
+  Verbosity = verb;
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void HoughTransformer::SubtractOffset(std::vector<HitLite>& hits) const {
 
   for(HitLite& hit : hits){
@@ -150,7 +158,7 @@ double HoughTransformer::Dist(const HitLite& hit,double r, double theta) const {
   
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::pair<double,double> HoughTransformer::GetLine(const std::vector<HitLite>& hits){
+std::tuple<double,double,double> HoughTransformer::GetLine(const std::vector<HitLite>& hits){
 
   Hits_test = hits;
 
@@ -159,9 +167,9 @@ std::pair<double,double> HoughTransformer::GetLine(const std::vector<HitLite>& h
   Minimizer->SetVariableLimits(1,-3.1415,3.1415);
   Minimizer->Minimize();
 
-  //std::cout << Minimizer->Status() << std::endl;
+  //if(Minimizer->Status()) std::cout << "Fit failed" << std::endl; 
 
-  return std::make_pair(Minimizer->X()[0],Minimizer->X()[1]);
+  return std::make_tuple(Minimizer->X()[0],Minimizer->X()[1],Minimizer->MinValue());
 
 }
 
@@ -224,8 +232,6 @@ void HoughTransformer::MakeTransform2(){
   }
 
   std::vector<std::pair<double,double>> transform;
-  double theta_min=3.1415,theta_max=-3.1415;
-  double r_min=1e10,r_max=-1e10;
 
   for(size_t i=0;i<Hits.size();i++){
       
@@ -233,54 +239,69 @@ void HoughTransformer::MakeTransform2(){
 
     if(!nearest_neighbors.size()) continue;
 
-    std::pair<double,double> line = GetLine(nearest_neighbors);
- 
+    std::tuple<double,double,double> fit = GetLine(nearest_neighbors);
+    std::pair<double,double> line = std::make_pair(std::get<0>(fit),std::get<1>(fit));
+
+    //std::cout << std::get<2>(fit) << std::endl;
+
+
+    //std::cout << "Before: " << line.first << "  " << line.second << "  a=" << -(cos(line.second)/sin(line.second)) << " b=" << line.first/sin(line.second) << std::endl;
+
     if(line.first < 0){
       line.first = abs(line.first); 
       if(line.second < 0) line.second += 3.1415;
-      if(line.second > 0) line.second -= 3.1415;
+      else if(line.second > 0) line.second -= 3.1415;
     }
 
-    if(line.second < 3.1415/2) line.second += 3.1415;
-    if(line.second > 3.1415/2) line.second -= 3.1415;
-    
-    // std::cout << std::endl;
+    //std::cout << "After1: " << line.first << "  " << line.second << "  a=" << -(cos(line.second)/sin(line.second)) << " b=" << line.first/sin(line.second) << std::endl;
+
+    //if(line.second < 3.1415) line.second += 2*3.1415;
+    //if(line.second > 3.1415) line.second -= 2*3.1415;
+
+    if(line.second < 0.0) line.second += 3.1415;
+
+    //std::cout << "After2: " << line.first << "  " << line.second << "  a=" << -(cos(line.second)/sin(line.second)) << " b=" << line.first/sin(line.second) << std::endl;
+ 
+
+    //std::cout << line.first << "  " << line.second << std::endl;
+ 
     std::vector<double> channel,tick;
     for(HitLite hit : nearest_neighbors){
       // std::cout << hit.Channel << "  " << hit.Tick << std::endl;
       channel.push_back(hit.Channel);
       tick.push_back(hit.Tick);
     }
-    //std::cout <<  line.first << "  " << line.second << std::endl;
-/*
-    TCanvas* c = new TCanvas("c","c");
-    TGraph* g = new TGraph(channel.size(),&(channel[0]),&(tick[0]));
-    TF1* f = new TF1("f","-(cos([1])/sin([1]))*x + [0]/sin([1])",-100,100);
-    f->SetParameter(0,line.first);
-    f->SetParameter(1,line.second);
-    g->SetMarkerSize(0.4);
-    g->SetMarkerStyle(20);
-    g->Draw("AP");
-    f->Draw("L same"); 
-     
-    TLegend* l = new TLegend(0.7,0.7,0.9,0.9);        
-    l->AddEntry((TObject*)0,("R=" + std::to_string(line.first)).c_str(),"");
-    l->AddEntry((TObject*)0,("Theta=" + std::to_string(line.second)).c_str(),"");
-    l->Draw();
+   
+    if(Draw && Verbosity == 2){
 
-    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_Group_" + std::to_string(i) + ".png").c_str());
- 
-    delete g;
-    delete f;
-    delete c;
-    delete l;
-*/
-    r_min = std::min(r_min,line.first);
-    r_max = std::max(r_max,line.first);
-    theta_min = std::min(theta_min,line.second);
-    theta_max = std::max(theta_max,line.second);
+      TCanvas* c = new TCanvas("c","c");
+      TGraph* g = new TGraph(channel.size(),&(channel[0]),&(tick[0]));
+      TF1* f = new TF1("f","-(cos([1])/sin([1]))*x + [0]/sin([1])",-1000,1000);
+      f->SetParameter(0,line.first);
+      f->SetParameter(1,line.second);
+      g->SetMarkerSize(0.4);
+      g->SetMarkerStyle(20);
+      g->Draw("AP");
+      f->Draw("L same"); 
+
+      TLegend* l = new TLegend(0.8,0.8,1.0,1.0);        
+      l->AddEntry((TObject*)0,("R=" + std::to_string(line.first)).c_str(),"");
+      l->AddEntry((TObject*)0,("Theta=" + std::to_string(line.second)).c_str(),"");
+      l->AddEntry((TObject*)0,("Chi2=" + std::to_string(std::get<2>(fit))).c_str(),"");
+      l->Draw();
+
+      c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_Group_" + std::to_string(i) + ".png").c_str());
+
+      delete g;
+      delete f;
+      delete c;
+      delete l;
+
+    }
+
+    line.first = sqrt(line.first);
+
     transform.push_back(line);
-
     Transform.push_back(HoughTransformPoint(Plane,line.first,line.second)); 
     Transform.back().Height++;
     Transform.back().Hits = nearest_neighbors;;
@@ -289,15 +310,15 @@ void HoughTransformer::MakeTransform2(){
 
   if(Transform.size() < 4) return;
 
+/*
   int nbins_r = std::max((r_max-r_min)/RBinSize,1.0);
   int nbins_theta = std::max((theta_max-theta_min)/ThetaBinSize,1.0);
-
   h_Transform = new TH2D("h_transform",";r;theta;",nbins_r,r_min,r_max,nbins_theta,theta_min,theta_max);
   for(std::pair<double,double> result : transform)
     h_Transform->Fill(result.first,result.second);
+*/
 
-
-  if(Draw){
+  if(Draw && Verbosity > 0){
     TCanvas* c = new TCanvas("c","c");
  
     std::vector<double> r,theta;
@@ -307,9 +328,9 @@ void HoughTransformer::MakeTransform2(){
     }
 
     TGraph* g = new TGraph(r.size(),&(r[0]),&(theta[0]));
+    g->SetMarkerSize(0.25);
+    g->SetMarkerStyle(20);
     g->Draw("AP");
-    g->SetMarkerSize(0.3);
-    g->SetMarkerSize(20);
     c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Scatter_Tune_" + std::to_string(TuneID) + ".png").c_str());
 
     delete c;
@@ -402,7 +423,6 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
   //double theta_min=3.1415,theta_max=-3.1415;
   double r_min=1e10,r_max=-1e10;
 
-
   for(HoughTransformPoint point : Transform){
     //std::cout << point.R << "  " << point.Theta << std::endl;
     r_min = std::min(r_min,point.R);
@@ -410,7 +430,7 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
   }
 
 
-  TH2D* h_Transform_Conv = new TH2D("h_Transform_Conv","",5*(r_max-r_min)/RBinSize,r_min,r_max,5*3.1415/ThetaBinSize,-3.1415/2,3.1415/2);
+  TH2D* h_Transform_Conv = new TH2D("h_Transform_Conv","",10*(r_max-r_min)/RBinSize,r_min,r_max,10*3.1415/ThetaBinSize,0.0,3.1415);
 
   for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
     for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
@@ -427,7 +447,7 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
     }
   }
 
-  if(Draw){
+  if(Draw && Verbosity > 0){
     TCanvas* c = new TCanvas("c","c");
     h_Transform_Conv->Draw("colz");
     h_Transform_Conv->SetStats(0);
@@ -524,7 +544,7 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
 
   }
 
-  if(Draw){
+  if(Draw && Verbosity > 0){
     TCanvas* c = new TCanvas("c","c");
     h_Transform_Conv->Draw("colz");
     h_Transform_Conv->SetStats(0);

@@ -9,7 +9,7 @@ R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 #include <ctime>    
 #include <chrono>
 
-const int tunes = 2000;
+const int tunes = 5000;
 std::vector<double> theta_bin_size;
 std::vector<double> r_bin_size;
 std::vector<int> conv_floor;
@@ -189,6 +189,7 @@ void TuneHoughTransformGoodReco(){
       double or_ti = vertex_ch_tick.second;
 
       hyperonreco::HoughTransformer transformer(hits.at(i_pl),i_pl,vertex_ch_tick.first,vertex_ch_tick.second,true);
+      transformer.SetVerbosity(1);
       transformer.SetTuneID(best_tune);
       transformer.SetRBinSize(r_bin_size.at(best_tune));
       transformer.SetThetaBinSize(theta_bin_size.at(best_tune));

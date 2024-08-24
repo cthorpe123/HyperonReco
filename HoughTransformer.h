@@ -50,6 +50,7 @@ namespace hyperonreco {
 
         void SetEvent(int run,int subrun,int event,int pfp=0);
         void SetTuneID(int tuneid);
+        void SetVerbosity(int verb);
 
         std::pair<double,double> GetPerformanceMetrics() const;
 
@@ -60,6 +61,7 @@ namespace hyperonreco {
         std::string RSE;
         std::string RSEP;
         bool Draw;
+        int Verbosity = 0;
 
         std::vector<HitLite> Hits;
         const int Plane;
@@ -67,18 +69,18 @@ namespace hyperonreco {
         const double Origin_Tick;
 
         // Tuning parameters
-        double RBinSize = 3.7;
+        double RBinSize = 3.18102;
         double ThetaBinSize = 0.2;
         int PeakSize = 1;
-        int PointGrouping = 6;
-        int ConvFloor = 2;
-        double MaxNeighbourDist2 = 11*11;
+        int PointGrouping = 4;
+        int ConvFloor = 3;
+        double MaxNeighbourDist2 = 8*8;
 
         std::vector<HitLite> Hits_test;
 
         std::vector<HitLite> FindNearestNeighbours(int point,const std::vector<HitLite>& hits,size_t num) const;
         double Dist(const HitLite& hit,double r, double theta) const;
-        std::pair<double,double> GetLine(const std::vector<HitLite>& hits);
+        std::tuple<double,double,double> GetLine(const std::vector<HitLite>& hits);
 
         TH2D* h_Transform = nullptr;
         std::vector<HoughTransformPoint> Transform;

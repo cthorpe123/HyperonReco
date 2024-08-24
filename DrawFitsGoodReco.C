@@ -72,6 +72,7 @@ void DrawFitsGoodReco(){
       double or_ti = vertex_ch_tick.second;
 
       HoughTransformer transformer(hits.at(i_pl),i_pl,vertex_ch_tick.first,vertex_ch_tick.second,true);
+      transformer.SetVerbosity(1);
       transformer.SetEvent(e.run,e.subrun,e.event);   
       transformer.MakeTransform2();
       std::vector<HoughTransformPoint> cluster = transformer.MakeClusters();
