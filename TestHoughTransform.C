@@ -7,7 +7,8 @@ R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 
 void TestHoughTransform(){
 
-  const std::string filename = "GoodReco.root";
+  //const std::string filename = "GoodReco.root";
+  const std::string filename = "HyperonTrees_Background.root";
 
   EventAssembler E(false);
   E.SetFile(filename,"Background");
@@ -22,7 +23,7 @@ void TestHoughTransform(){
     std::cout << "Event has " << e.TracklikePrimaryDaughters.size() << " tracks and " << e.ShowerlikePrimaryDaughters.size() << " showers" << std::endl;
 
     int pfp_ctr=0;
-    for(RecoParticle pfp : e.ShowerlikePrimaryDaughters){
+    for(RecoParticle pfp : e.TracklikePrimaryDaughters){
 
       // Select the PFP we want to use the hits from
       //RecoParticle pfp = e.TracklikePrimaryDaughters.at(1);
@@ -43,6 +44,7 @@ void TestHoughTransform(){
         double or_ti = vertex_ch_tick.second;
 
         hyperonreco::HoughTransformer transformer(hits.at(i_pl),i_pl,vertex_ch_tick.first,vertex_ch_tick.second,true);
+        transformer.SetVerbosity(1);
         transformer.SetEvent(e.run,e.subrun,e.event,pfp_ctr);   
         transformer.MakeTransform2();
         transformer.FindPeaks2();

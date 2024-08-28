@@ -7,9 +7,21 @@ namespace hyperonreco {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-FitOrganiser::FitOrganiser(int run,int subrun,int event,RecoParticle pfp,const std::vector<std::vector<HoughTransformPoint>>& clusters,std::vector<std::vector<HitLite>> allhits) :
-    Run(run),Subrun(subrun),Event(event),PFP(pfp),AllHits(allhits)
-{
+FitOrganiser::FitOrganiser(){
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void FitOrganiser::SetData(int run,int subrun,int event,RecoParticle pfp,const std::vector<std::vector<HoughTransformPoint>>& clusters,std::vector<std::vector<HitLite>> allhits){
+
+  FitResults.clear();
+
+  Run = run;
+  Subrun = subrun;
+  Event = event;
+  PFP = pfp;
+  AllHits = allhits;
 
   // Flatten the input vector out, with pointers to the original data
   ClustersFlat.clear();
@@ -28,6 +40,8 @@ FitOrganiser::FitOrganiser(int run,int subrun,int event,RecoParticle pfp,const s
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void FitOrganiser::MakeFitList(){
+
+  //Fitter->Reset();
 
   for(size_t nclusters : NClusters){
 
@@ -54,21 +68,51 @@ void FitOrganiser::MakeFitList(){
 
       if(!two_planes || AlreadyTested(clusters_touse)) continue;
 
-      for(size_t i=0;i<clusters_touse.size();i++) Fitter->AddData(*(clusters_touse.at(i)));
+      VFitter Fitter(true); 
+
+      for(size_t i=0;i<clusters_touse.size();i++) Fitter.AddData(*(clusters_touse.at(i)));
 
       //Fitter->SetEvent(Run,Subrun,Event,ctr);
       FittedV v;
       v.Vertex = TVector3(PFP.X_NoSC,PFP.Y_NoSC,PFP.Z_NoSC);
-      Fitter->SetGuess(v);
-      bool converged = Fitter->DoFitGridSearch3(v,NThrows); 
-      //bool converged = Fitter->DoFit(v); 
-      Fitter->Reset();
+      Fitter.SetGuess(v);
 
-      std::cout << "v.GetOpeningAngle()=" << v.GetOpeningAngle() << std::endl;
+      //bool converged = Fitter->DoFitGridSearch3(v,NThrows); 
+      bool converged = Fitter.DoFit(v); 
+
+      //Fitter->Reset();
 
       if(!converged || v.GetOpeningAngle() < OpeningAngleRange.first || v.GetOpeningAngle() > OpeningAngleRange.second) continue;
 
       FitResults[v.Chi2/pow(v.NDof,4)] = std::make_pair(clusters_touse,v); 
+
+      if(t_Output != nullptr){
+        t_run = Run;
+        t_subrun = Subrun;
+        t_event = Event;
+        t_PFP = PFP.Index;
+        
+        for(int i_pl=0;i_pl<3;i_pl++){
+          t_HitChannels.at(i_pl).clear();
+          t_HitTicks.at(i_pl).clear();
+          t_HitWidths.at(i_pl).clear();
+        }      
+
+        for(size_t i_c=0;i_c<clusters_touse.size();i_c++){
+          HoughTransformPoint cluster = *(clusters_touse.at(i_c));
+          for(HitLite hit : cluster.Hits){
+            t_HitChannels.at(cluster.Plane).push_back(hit.Channel);
+            t_HitTicks.at(cluster.Plane).push_back(hit.Tick);
+            t_HitWidths.at(cluster.Plane).push_back(hit.Width);
+          }
+        }
+
+        t_Score = v.Chi2;
+        t_NHits = {t_HitChannels.at(0).size(),t_HitChannels.at(1).size(),t_HitChannels.at(2).size()};
+
+        t_Output->Fill(); 
+
+      }
 
     }
 
@@ -77,14 +121,14 @@ void FitOrganiser::MakeFitList(){
   int ctr=0;
   std::map<double,std::pair<std::vector<const HoughTransformPoint*>,FittedV>>::iterator it;
   for(it = FitResults.begin();it != FitResults.end();it++){
-    Fitter->SetEvent(Run,Subrun,Event,ctr);
-    for(size_t i=0;i<it->second.first.size();i++) Fitter->AddData(*(it->second.first.at(i)));
-    Fitter->DrawFit2(it->second.second,AllHits);
-    Fitter->Reset();
+    VFitter Fitter(true); 
+    Fitter.SetEvent(Run,Subrun,Event,ctr);
+    for(size_t i=0;i<it->second.first.size();i++) Fitter.AddData(*(it->second.first.at(i)));
+    Fitter.DrawFit2(it->second.second,AllHits);
+    Fitter.Reset();
     ctr++;
     if(ctr > 10) break;
   }  
-
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -112,6 +156,38 @@ bool FitOrganiser::AlreadyTested(const std::vector<const HoughTransformPoint*>& 
   }
 
   return false;
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void FitOrganiser::SetTreePtr(TTree* t){
+
+  t_Output = t;
+  InitialiseTree(); 
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void FitOrganiser::InitialiseTree(){
+
+  std::cout << "Output tree being set up" << std::endl;
+  t_Output->Branch("run",&t_run);
+  t_Output->Branch("subrun",&t_subrun);
+  t_Output->Branch("event",&t_event);
+  t_Output->Branch("PFP",&t_PFP);
+  //t_Output->Branch("Fit",&t_Fit);
+  t_Output->Branch("HitChannels",&t_HitChannels);
+  t_Output->Branch("HitTicks",&t_HitTicks);
+  t_Output->Branch("HitWidths",&t_HitWidths);
+  t_Output->Branch("Score",&t_Score);
+  t_Output->Branch("NHits",&t_NHits);
+
+  t_HitChannels.resize(3);
+  t_HitTicks.resize(3);
+  t_HitWidths.resize(3);
+  t_NHits.resize(3);
 
 }
 

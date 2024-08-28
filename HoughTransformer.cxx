@@ -117,6 +117,14 @@ void HoughTransformer::SetMaxNeighbourDist(double dist){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void HoughTransformer::SetChi2Cut(double chi2){
+
+   Chi2Cut = chi2;
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void HoughTransformer::SetVerbosity(int verb){
 
   Verbosity = verb;
@@ -240,10 +248,12 @@ void HoughTransformer::MakeTransform2(){
     if(!nearest_neighbors.size()) continue;
 
     std::tuple<double,double,double> fit = GetLine(nearest_neighbors);
+
+    if(std::get<2>(fit) > Chi2Cut) continue; 
+
     std::pair<double,double> line = std::make_pair(std::get<0>(fit),std::get<1>(fit));
 
     //std::cout << std::get<2>(fit) << std::endl;
-
 
     //std::cout << "Before: " << line.first << "  " << line.second << "  a=" << -(cos(line.second)/sin(line.second)) << " b=" << line.first/sin(line.second) << std::endl;
 
@@ -429,8 +439,7 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
     r_max = std::max(r_max,point.R);
   }
 
-
-  TH2D* h_Transform_Conv = new TH2D("h_Transform_Conv","",10*(r_max-r_min)/RBinSize,r_min,r_max,10*3.1415/ThetaBinSize,0.0,3.1415);
+  TH2D* h_Transform_Conv = new TH2D("h_Transform_Conv","",20*(r_max-r_min)/RBinSize,r_min,r_max,20*3.1415/ThetaBinSize,0.0,3.1415);
 
   for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
     for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
@@ -453,6 +462,12 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
     h_Transform_Conv->SetStats(0);
     c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Conv_Tune_" + std::to_string(TuneID) + ".png").c_str());
     c->Clear();
+
+    h_Transform_Conv->Draw("ARR");
+    h_Transform_Conv->SetStats(0);
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Arr_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Clear();
+
     delete c;
   }
 
@@ -768,6 +783,207 @@ std::pair<double,double> HoughTransformer::GetPerformanceMetrics() const {
 
   return std::make_pair(mean_purity,mean_completeness);
  
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void HoughTransformer::FindPeaks3() const {
+
+  std::vector<double> r,theta;
+  for(HoughTransformPoint point : Transform){
+    r.push_back(point.R);
+    theta.push_back(point.Theta);
+  }
+
+  TGraph* g = new TGraph(r.size(),&(r[0]),&(theta[0]));
+  g->SetMarkerSize(0.25);
+  g->SetMarkerStyle(20);
+
+  //double theta_min=3.1415,theta_max=-3.1415;
+  double r_min=1e10,r_max=-1e10;
+
+  for(HoughTransformPoint point : Transform){
+    //std::cout << point.R << "  " << point.Theta << std::endl;
+    r_min = std::min(r_min,point.R);
+    r_max = std::max(r_max,point.R);
+  }
+
+  int multiplier = 5;
+  TH2D* h_Transform_Conv = new TH2D("h_Transform_Conv","",multiplier*(r_max-r_min)/RBinSize,r_min-2*RBinSize,r_max+2*RBinSize,multiplier*3.1415/ThetaBinSize,0.0,3.1415);
+
+  for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
+    for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
+
+      double r = h_Transform_Conv->GetXaxis()->GetBinCenter(i);
+      double theta = h_Transform_Conv->GetYaxis()->GetBinCenter(j);
+
+      int points_inside = 0;
+      for(HoughTransformPoint point : Transform){
+        if(point.R > r - RBinSize/2 && point.R < r + RBinSize/2 && point.Theta > theta - ThetaBinSize/2 && point.Theta < theta + ThetaBinSize/2)
+          points_inside++;        
+      }
+
+      h_Transform_Conv->SetBinContent(i,j,points_inside);
+
+    }
+  }
+
+  if(Draw && Verbosity > 0){
+    TCanvas* c = new TCanvas("c","c");
+    h_Transform_Conv->Draw("colz");
+    h_Transform_Conv->SetStats(0);
+    g->Draw("P same");
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Conv_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Clear();
+
+    delete c;
+  }
+
+
+  TH2D* h_Transform_Grad_X = (TH2D*)h_Transform_Conv->Clone("h_TransformGrad_X");
+  TH2D* h_Transform_Grad_Y = (TH2D*)h_Transform_Conv->Clone("h_TransformGrad_Y");
+  h_Transform_Grad_X->Reset();
+  h_Transform_Grad_Y->Reset();
+
+  // Try calculating graident at every bin
+  for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
+    std::cout << "New Y group, bins=" << h_Transform_Conv->GetNbinsY() << std::endl;
+
+    for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
+
+
+        double grad_x = h_Transform_Conv->GetBinContent(i+1,j) - h_Transform_Conv->GetBinContent(i-1,j);
+        double grad_y = h_Transform_Conv->GetBinContent(i,j+1) - h_Transform_Conv->GetBinContent(i,j-1);
+        
+        h_Transform_Grad_X->SetBinContent(i,j,grad_x);
+        h_Transform_Grad_Y->SetBinContent(i,j,grad_y);
+
+    }
+  }
+
+  if(Draw && Verbosity > 0){
+    TCanvas* c = new TCanvas("c","c");
+    h_Transform_Grad_X->Draw("colz");
+    h_Transform_Grad_X->SetStats(0);
+    g->Draw("P same");
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Conv_GradX_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Clear();
+
+    h_Transform_Grad_Y->Draw("colz");
+    h_Transform_Grad_Y->SetStats(0);
+    g->Draw("P same");
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Conv_GradY_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Clear();
+
+    delete c;
+  }
+
+  TH2D* h_Transform_Grad_SignChange = (TH2D*)h_Transform_Conv->Clone("h_TransformGrad_SignChange");
+  TH2D* h_Transform_Grad_X_SignChange = (TH2D*)h_Transform_Conv->Clone("h_TransformGrad_X_SignChange");
+  TH2D* h_Transform_Grad_Y_SignChange = (TH2D*)h_Transform_Conv->Clone("h_TransformGrad_Y_SignChange");
+  h_Transform_Grad_SignChange->Reset();
+  h_Transform_Grad_X_SignChange->Reset();
+  h_Transform_Grad_Y_SignChange->Reset();
+
+  // Find bins in which the sign of the gradient changes - X
+    for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
+      bool up = false;
+      std::cout << "Starting new group" << std::endl;
+      for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
+
+        std::cout << h_Transform_Grad_X->GetBinContent(i-1,j) << "  " << h_Transform_Grad_X->GetBinContent(i,j);
+
+        if(h_Transform_Grad_X->GetBinContent(i-1,j) == 0 && h_Transform_Grad_X->GetBinContent(i,j) > 0 && !up){
+          h_Transform_Grad_X_SignChange->SetBinContent(i,j,1);
+          h_Transform_Grad_SignChange->SetBinContent(i,j,1);
+          up = true;
+          std::cout << "Found edge" ;
+        }
+        else if(h_Transform_Grad_X->GetBinContent(i-1,j) > 0 && h_Transform_Grad_X->GetBinContent(i,j) < 0){
+          up = false;
+        }
+        else if(h_Transform_Grad_X->GetBinContent(i-1,j) < 0 && h_Transform_Grad_X->GetBinContent(i,j) > 0){
+          h_Transform_Grad_X_SignChange->SetBinContent(i,j,1);
+          h_Transform_Grad_SignChange->SetBinContent(i,j,1);
+          up = true;
+          std::cout << "Found edge" ;
+        }
+        else if(h_Transform_Grad_X->GetBinContent(i-1,j) < 0 && h_Transform_Grad_X->GetBinContent(i,j) == 0){
+          h_Transform_Grad_X_SignChange->SetBinContent(i,j,1);
+          h_Transform_Grad_SignChange->SetBinContent(i,j,1);
+          up = false;
+          std::cout << "Found edge" ;
+        }
+
+        std::cout << std::endl;        
+    }
+  }
+ 
+    // Find bins in which the sign of the gradient changes - Y
+    for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
+      bool up = false;
+      std::cout << "Starting new group" << std::endl;
+      for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
+
+        std::cout << h_Transform_Grad_Y->GetBinContent(i,j-1) << "  " << h_Transform_Grad_Y->GetBinContent(i,j);
+
+        if(h_Transform_Grad_Y->GetBinContent(i,j-1) == 0 && h_Transform_Grad_Y->GetBinContent(i,j) > 0 && !up){
+          h_Transform_Grad_Y_SignChange->SetBinContent(i,j,1);
+          h_Transform_Grad_SignChange->SetBinContent(i,j,1);
+          up = true;
+          std::cout << "Found edge" ;
+        }
+        else if(h_Transform_Grad_Y->GetBinContent(i,j-1) > 0 && h_Transform_Grad_Y->GetBinContent(i,j) < 0){
+          up = false;
+        }
+        else if(h_Transform_Grad_Y->GetBinContent(i,j-1) < 0 && h_Transform_Grad_Y->GetBinContent(i,j) > 0){
+          h_Transform_Grad_Y_SignChange->SetBinContent(i,j,1);
+          h_Transform_Grad_SignChange->SetBinContent(i,j,1);
+          up = true;
+          std::cout << "Found edge" ;
+        }
+        else if(h_Transform_Grad_Y->GetBinContent(i,j-1) < 0 && h_Transform_Grad_Y->GetBinContent(i,j) == 0){
+          h_Transform_Grad_Y_SignChange->SetBinContent(i,j,1);
+          h_Transform_Grad_SignChange->SetBinContent(i,j,1);
+          up = false;
+          std::cout << "Found edge" ;
+        }
+
+        std::cout << std::endl;        
+    }
+  }
+
+  if(Draw && Verbosity > 0){
+    TCanvas* c = new TCanvas("c","c");
+
+    h_Transform_Grad_SignChange->Draw("colz");
+    h_Transform_Grad_SignChange->SetStats(0);
+    g->Draw("P same");
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Conv_Grad_SignChange_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Clear();
+
+    h_Transform_Grad_X_SignChange->Draw("colz");
+    h_Transform_Grad_X_SignChange->SetStats(0);
+    g->Draw("P same");
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Conv_GradX_SignChange_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Clear();
+
+    h_Transform_Grad_Y_SignChange->Draw("colz");
+    h_Transform_Grad_Y_SignChange->SetStats(0);
+    g->Draw("P same");
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Conv_GradY_SignChange_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Clear();
+
+    delete c;
+
+  }
+
+  delete h_Transform_Conv;
+  delete h_Transform_Grad_X;
+  delete h_Transform_Grad_Y;
+  delete h_Transform_Grad_X_SignChange;
+  delete h_Transform_Grad_Y_SignChange;
+  
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////

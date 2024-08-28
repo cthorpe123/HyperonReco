@@ -26,15 +26,20 @@ void DrawFitsGoodReco(){
   EventAssembler E(false);
   E.SetFile(filename,"Background");
 
+  FitOrganiser organiser;
+  TFile* f_Output = TFile::Open("rootfiles/FitResults.root","RECREATE");
+  TTree* t_Output = new TTree("Output","Output");
+  organiser.SetTreePtr(t_Output);
+
   // Select the event we want to analyse
   int ievent=0;
-  while(ievent<E.GetNEvents()){
+  while(ievent<E.GetNEvents() && ievent < 10){
     Event e = E.GetEvent(ievent);
 
     //std::cout << ievent << "/" << E.GetNEvents() << std::endl;
     ievent++;
 
-    //if(e.run != 6999 || e.subrun != 45 || e.event != 2285) continue;
+    //if(e.run != 7003 || e.subrun != 682 || e.event != 34102) continue;
 
     std::vector<RecoParticle> pfps;
     bool has_proton=false,has_pion=false;
@@ -76,15 +81,19 @@ void DrawFitsGoodReco(){
       transformer.SetEvent(e.run,e.subrun,e.event);   
       transformer.MakeTransform2();
       std::vector<HoughTransformPoint> cluster = transformer.MakeClusters();
-      clusters.at(i_pl) = cluster;
+      transformer.FindPeaks3();
+      //clusters.at(i_pl) = cluster;
 
     } // i_pl
 
-    //FindBestFit(e.run,e.subrun,e.event,clusters,pfps.at(0),hits);
-    //FitOrganiser organiser(e.run,e.subrun,e.event,pfps.at(0),clusters,hits);
+    //organiser.SetData(e.run,e.subrun,e.event,pfps.at(0),clusters,hits);
     //organiser.MakeFitList();
 
   } // ievent
+
+  t_Output->Write();
+  f_Output->Close();
+
 
 }
 

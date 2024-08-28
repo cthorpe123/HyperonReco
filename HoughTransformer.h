@@ -36,6 +36,7 @@ namespace hyperonreco {
         void MakeTransform2();
         std::vector<HoughTransformPoint> FindPeaks() const;
         std::vector<HoughTransformPoint> FindPeaks2() const;
+        void FindPeaks3() const;
         void DrawFits();
         void SubtractOffset(std::vector<HitLite>& hits) const;
         void RestoreOffset(std::vector<HitLite>& hits) const;
@@ -46,6 +47,7 @@ namespace hyperonreco {
         void SetPeakSize(int size);
         void SetPointGrouping(int size);
         void SetMaxNeighbourDist(double dist);
+        void SetChi2Cut(double chi2);
         void SetConvFloor(int fl);
 
         void SetEvent(int run,int subrun,int event,int pfp=0);
@@ -69,12 +71,13 @@ namespace hyperonreco {
         const double Origin_Tick;
 
         // Tuning parameters
-        double RBinSize = 3.18102;
-        double ThetaBinSize = 0.2;
+        double RBinSize = 1.0;
+        double ThetaBinSize = 0.1;
         int PeakSize = 1;
         int PointGrouping = 4;
-        int ConvFloor = 3;
-        double MaxNeighbourDist2 = 8*8;
+        int ConvFloor = 2;
+        double MaxNeighbourDist2 = 13*13;
+        double Chi2Cut = 2.8;
 
         std::vector<HitLite> Hits_test;
 

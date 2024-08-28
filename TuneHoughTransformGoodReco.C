@@ -9,11 +9,12 @@ R__LOAD_LIBRARY($HYP_TOP/lib/libParticleDict.so);
 #include <ctime>    
 #include <chrono>
 
-const int tunes = 5000;
+const int tunes = 10000;
 std::vector<double> theta_bin_size;
 std::vector<double> r_bin_size;
 std::vector<int> conv_floor;
 std::vector<int> grouping;
+std::vector<double> chi2cut;
 std::vector<double> max_neighbour_dist;
 std::vector<double> score(tunes,0);
 
@@ -35,7 +36,7 @@ void TuneHoughTransformGoodReco(){
   std::pair<double,double> conv_floor_range = {2.5,7.5};
   std::pair<double,double> grouping_range = {2.5,7.5};
   std::pair<double,double> max_neighbour_dist_range = {5.0,15.0};
-  //std::pair<double,double> chi2_cut_range = {0.1,2.0};
+  std::pair<double,double> chi2cut_range = {0.1,3.0};
 
   for(int i=0;i<tunes;i++){
     theta_bin_size.push_back(r->Uniform(theta_bin_size_range.first,theta_bin_size_range.second)); 
@@ -43,7 +44,7 @@ void TuneHoughTransformGoodReco(){
     conv_floor.push_back(r->Uniform(conv_floor_range.first,conv_floor_range.second)); 
     grouping.push_back(r->Uniform(grouping_range.first,grouping_range.second)); 
     max_neighbour_dist.push_back(r->Uniform(max_neighbour_dist_range.first,max_neighbour_dist_range.second)); 
-    //chi2_cut.push_back(r->Uniform(chi2_cut_range.first,chi2_cut_range.second));
+    chi2cut.push_back(r->Uniform(chi2cut_range.first,chi2cut_range.second));
   }
         
   // Merge hit vectors together an remove hits outside roi 
@@ -104,6 +105,8 @@ void TuneHoughTransformGoodReco(){
 
       for(int i=0;i<tunes;i++){
 
+      std::cout << "Event " << ievent <<  "/" <<  E.GetNEvents() << "  Plane " << i_pl << "  Tune " << i << std::endl;
+        
         /*
         std::cout << "Testing tune:" << std::endl;
         std::cout << "theta_bin_size=" << theta_bin_size.at(i) << std::endl;
@@ -111,7 +114,7 @@ void TuneHoughTransformGoodReco(){
         std::cout << "peak_size=" << peak_size.at(i) << std::endl;
         std::cout << "grouping=" << grouping.at(i) << std::endl;
         std::cout << "max_neighbour_dist=" << max_neighbour_dist.at(i) << std::endl;
-        std::cout << "chi2_cut=" << chi2_cut.at(i) << std::endl;
+        std::cout << "chi2cut=" << chi2cut.at(i) << std::endl;
         */
         transformer.SetTuneID(i);
         transformer.SetRBinSize(r_bin_size.at(i));
@@ -119,7 +122,7 @@ void TuneHoughTransformGoodReco(){
         transformer.SetPointGrouping(grouping.at(i));
         transformer.SetMaxNeighbourDist(max_neighbour_dist.at(i));
         transformer.SetConvFloor(conv_floor.at(i));
-        //transformer.SetChi2Cut(chi2_cut.at(i));
+        transformer.SetChi2Cut(chi2cut.at(i));
         transformer.MakeTransform2();
         std::pair<double,double> performance = transformer.GetPerformanceMetrics();
         score.at(i) += performance.first*performance.second;      
@@ -146,6 +149,7 @@ void TuneHoughTransformGoodReco(){
   std::cout << "r_bin_size=" << r_bin_size.at(best_tune) << std::endl;
   std::cout << "conv_floor=" << conv_floor.at(best_tune) << std::endl;
   std::cout << "grouping=" << grouping.at(best_tune) << std::endl;
+  std::cout << "chi2cut=" << chi2cut.at(best_tune) << std::endl;
   std::cout << "max_neighbour_dist=" << max_neighbour_dist.at(best_tune) << std::endl;
 
   ievent=0;
@@ -196,8 +200,8 @@ void TuneHoughTransformGoodReco(){
       //transformer.SetPeakSize(peak_size.at(best_tune));
       transformer.SetPointGrouping(grouping.at(best_tune));
       transformer.SetMaxNeighbourDist(max_neighbour_dist.at(best_tune));
-        transformer.SetConvFloor(conv_floor.at(best_tune));
-      //transformer.SetChi2Cut(chi2_cut.at(best_tune));
+      transformer.SetConvFloor(conv_floor.at(best_tune));
+      transformer.SetChi2Cut(chi2cut.at(best_tune));
       transformer.SetEvent(e.run,e.subrun,e.event);   
       transformer.MakeTransform2();
       transformer.MakeClusters();
@@ -217,14 +221,14 @@ void TuneHoughTransformGoodReco(){
   int t_conv_floor;
   int t_grouping;
   double t_max_neighbour_dist;
-  //double t_chi2_cut;
+  double t_chi2cut;
   double t_score;
   t_tunes->Branch("theta_bin_size",&t_theta_bin_size);
   t_tunes->Branch("r_bin_size",&t_r_bin_size);
   t_tunes->Branch("conv_floor",&t_conv_floor);
   t_tunes->Branch("grouping",&t_grouping);
   t_tunes->Branch("max_neighbour_dist",&t_max_neighbour_dist);
-  //t_tunes->Branch("chi2_cut",&t_chi2_cut);
+  t_tunes->Branch("chi2cut",&t_chi2cut);
   t_tunes->Branch("score",&t_score);
 
   for(int i=0;i<tunes;i++){
@@ -233,7 +237,7 @@ void TuneHoughTransformGoodReco(){
     t_conv_floor = conv_floor.at(i);
     t_grouping = grouping.at(i);
     t_max_neighbour_dist = max_neighbour_dist.at(i);
-    //t_chi2_cut = chi2_cut.at(i);
+    t_chi2cut = chi2cut.at(i);
     t_score = score.at(i)/n_tests;
     t_tunes->Fill();
   }

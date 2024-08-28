@@ -311,8 +311,8 @@ bool VFitter::DoFit(FittedV& fittedv){
   fMinimizer->SetFunction(min);
   fMinimizer->Minimize();
 
-  if(fMinimizer->Status() != 0) std::cout << "Minimization did not converge" << std::endl;
-  else std::cout << "Minimization succeeded" << std::endl;
+  //if(fMinimizer->Status() != 0) std::cout << "Minimization did not converge" << std::endl;
+  //else std::cout << "Minimization succeeded" << std::endl;
 
   points_suc++;
 
