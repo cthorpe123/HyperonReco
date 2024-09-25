@@ -728,8 +728,7 @@ void HoughTransformer::FindPeaks3() const {
     r_max = std::max(r_max,point.R);
   }
 
-  int multiplier = 100;
-  TH2D* h_Transform_Conv = new TH2D("h_Transform_Conv","",multiplier*(r_max-r_min)/RBinSize,r_min-2*RBinSize,r_max+2*RBinSize,multiplier*3.1415/ThetaBinSize,0.0,3.1415);
+  TH2D* h_Transform_Conv = new TH2D("h_Transform_Conv","",Multiplier*(r_max-r_min)/RBinSize,r_min-2*RBinSize,r_max+2*RBinSize,Multiplier*3.1415/ThetaBinSize,0.0,3.1415);
 
   for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
     for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
@@ -801,6 +800,7 @@ void HoughTransformer::FindPeaks3() const {
   }
 */
 
+  /*
   TH2D* h_Transform_Grad_X = (TH2D*)h_Transform_Conv->Clone("h_TransformGrad_X");
   TH2D* h_Transform_Grad_Y = (TH2D*)h_Transform_Conv->Clone("h_TransformGrad_Y");
   h_Transform_Grad_X->Reset();
@@ -837,6 +837,27 @@ void HoughTransformer::FindPeaks3() const {
 
     delete c;
   }
+*/
+
+  TH2D* h_Transform_Grad_X = MakeConvHistogramDer(Transform,false);
+  TH2D* h_Transform_Grad_Y = MakeConvHistogramDer(Transform,true);
+
+  if(Draw && Verbosity > 0){
+    TCanvas* c = new TCanvas("c","c");
+    h_Transform_Grad_X->Draw("colz");
+    h_Transform_Grad_X->SetStats(0);
+    g->Draw("P same");
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Conv_GradX_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Clear();
+
+    h_Transform_Grad_Y->Draw("colz");
+    h_Transform_Grad_Y->SetStats(0);
+    g->Draw("P same");
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Conv_GradY_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Clear();
+
+    delete c;
+  }
 
   TH2D* h_Transform_Grad_SignChange = (TH2D*)h_Transform_Conv->Clone("h_TransformGrad_SignChange");
   TH2D* h_Transform_Grad_X_SignChange = (TH2D*)h_Transform_Conv->Clone("h_TransformGrad_X_SignChange");
@@ -845,15 +866,17 @@ void HoughTransformer::FindPeaks3() const {
   h_Transform_Grad_X_SignChange->Reset();
   h_Transform_Grad_Y_SignChange->Reset();
 
-  double _EPSILON_ = 0.001;
+  double _EPSILON_ = 0.005/Multiplier/RBinSize;
 
   // Find bins in which the sign of the gradient changes - X
   for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
     bool up = false;
-    std::cout << "Starting new group" << std::endl;
+    //std::cout << "Starting new group" << std::endl;
+    //std::cout << "_EPSILON_=" << _EPSILON_ << std::endl;
     for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
 
-      //std::cout << h_Transform_Grad_X->GetBinContent(i-1,j) << "  " << h_Transform_Grad_X->GetBinContent(i,j) << std::endl;
+      //std::cout << h_Transform_Conv->GetXaxis()->GetBinCenter(i) << "  " << h_Transform_Conv->GetYaxis()->GetBinCenter(j) << "   ";
+      //std::cout << h_Transform_Grad_X->GetBinContent(i-1,j) << "  ";
 
       if(abs(h_Transform_Grad_X->GetBinContent(i-1,j)) < _EPSILON_ && h_Transform_Grad_X->GetBinContent(i,j) > _EPSILON_ && !up){
         h_Transform_Grad_X_SignChange->SetBinContent(i,j,1);
@@ -881,9 +904,12 @@ void HoughTransformer::FindPeaks3() const {
     }
   }
 
+  _EPSILON_ = 0.005/Multiplier/ThetaBinSize;
+
   // Find bins in which the sign of the gradient changes - Y
   for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
     bool up = false;
+    //std::cout << "_EPSILON_=" << _EPSILON_ << std::endl;
     //std::cout << "Starting new group" << std::endl;
     for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
 
@@ -959,8 +985,7 @@ TH2D* HoughTransformer::MakeConvHistogram(std::vector<HoughTransformPoint> trans
     r_max = std::max(r_max,point.R);
   }
 
-  int multiplier = 50;
-  TH2D* h_Transform_Conv = new TH2D("h_Transform_Conv","",multiplier*(r_max-r_min)/RBinSize,r_min-2*RBinSize,r_max+2*RBinSize,multiplier*3.1415/ThetaBinSize,0.0,3.1415);
+  TH2D* h_Transform_Conv = new TH2D("h_Transform_Conv","",Multiplier*(r_max-r_min)/RBinSize,r_min-2*RBinSize,r_max+2*RBinSize,Multiplier*3.1415/ThetaBinSize,0.0,3.1415);
 
   if(!gausskernel){
     for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
@@ -999,6 +1024,42 @@ TH2D* HoughTransformer::MakeConvHistogram(std::vector<HoughTransformPoint> trans
 
   }
 
+  h_Transform_Conv->Scale(1.0/transform.size());
+
+  return h_Transform_Conv;
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+TH2D* HoughTransformer::MakeConvHistogramDer(std::vector<HoughTransformPoint> transform,bool xy) const {
+
+  double r_min=1e10,r_max=-1e10;
+  for(HoughTransformPoint point : transform){
+    //std::cout << point.R << "  " << point.Theta << std::endl;
+    r_min = std::min(r_min,point.R);
+    r_max = std::max(r_max,point.R);
+  }
+
+  std::string name = xy ? "h_Transform_Conv_Y" : "h_Transform_Conv_X";
+  TH2D* h_Transform_Conv = new TH2D(name.c_str(),"",Multiplier*(r_max-r_min)/RBinSize,r_min-2*RBinSize,r_max+2*RBinSize,Multiplier*3.1415/ThetaBinSize,0.0,3.1415);
+  for(HoughTransformPoint point : transform){
+    const double r = point.R;
+    const double theta = point.Theta;
+    //    std::cout << r << "  " << theta << std::endl;
+    for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
+      for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
+        //          std::cout << r << "  " << theta << "     " << h_Transform_Conv->GetXaxis()->GetBinCenter(i) << "  " << h_Transform_Conv->GetYaxis()->GetBinCenter(j) << "    " <<  Gaus2D(r,theta,RBinSize,ThetaBinSize,h_Transform_Conv->GetXaxis()->GetBinCenter(i), h_Transform_Conv->GetYaxis()->GetBinCenter(j)) << std::endl;
+        double bin_r = h_Transform_Conv->GetXaxis()->GetBinCenter(i);
+        double bin_theta = h_Transform_Conv->GetYaxis()->GetBinCenter(j);
+
+        if(!xy) h_Transform_Conv->Fill(bin_r,bin_theta,Gaus2D_GradX(r,theta,RBinSize,ThetaBinSize,bin_r,bin_theta));
+        else h_Transform_Conv->Fill(bin_r,bin_theta,Gaus2D_GradY(r,theta,RBinSize,ThetaBinSize,bin_r,bin_theta));
+      }
+    }
+  }
+
+  h_Transform_Conv->Scale(1.0/transform.size());
 
   return h_Transform_Conv;
 

@@ -35,13 +35,14 @@ namespace hyperonreco {
   }
 
   inline double Gaus2D_GradX(double mu_x,double mu_y,double sd_x,double sd_y,double x,double y){
-    return (1.0/2/PI)/sqrt(sd_x*sd_y)*(x-mu_x)/sd_x/sd_x*exp(-0.5*((mu_x-x)*(mu_x-x)/sd_x/sd_x + (mu_y-y)*(mu_y-y)/sd_y/sd_y));
+    return (1.0/2/PI)/sqrt(sd_x*sd_y)*(mu_x-x)/sd_x/sd_x*exp(-0.5*((mu_x-x)*(mu_x-x)/sd_x/sd_x + (mu_y-y)*(mu_y-y)/sd_y/sd_y));
   }
    
   inline double Gaus2D_GradY(double mu_x,double mu_y,double sd_x,double sd_y,double x,double y){
-    return (1.0/2/PI)/sqrt(sd_x*sd_y)*(y-mu_y)/sd_y/sd_y*exp(-0.5*((mu_x-x)*(mu_x-x)/sd_x/sd_x + (mu_y-y)*(mu_y-y)/sd_y/sd_y));
+    return (1.0/2/PI)/sqrt(sd_x*sd_y)*(mu_y-y)/sd_y/sd_y*exp(-0.5*((mu_x-x)*(mu_x-x)/sd_x/sd_x + (mu_y-y)*(mu_y-y)/sd_y/sd_y));
   }
 
+/*
   inline double Gaus2D_GradX2(double mu_x,double mu_y,double sd_x,double sd_y,double x,double y){
     return (1.0/2/PI)/sqrt(sd_x*sd_y)*(mu_x*mu_x - 2*mu_x*x - sd_x*sd_x + x*x)/sd_x/sd_x/sd_x/sd_x*exp(-0.5*((mu_x-x)*(mu_x-x)/sd_x/sd_x + (mu_y-y)*(mu_y-y)/sd_y/sd_y));
   }
@@ -49,7 +50,7 @@ namespace hyperonreco {
   inline double Gaus2D_GradY2(double mu_x,double mu_y,double sd_x,double sd_y,double x,double y){
     return (1.0/2/PI)/sqrt(sd_x*sd_y)*(mu_y*mu_y - 2*mu_y*y - sd_y*sd_y + y*y)/sd_y/sd_y/sd_y/sd_y*exp(-0.5*((mu_x-x)*(mu_x-x)/sd_x/sd_x + (mu_y-y)*(mu_y-y)/sd_y/sd_y));
   }
-
+*/
   class HoughTransformer {
 
       public:
@@ -110,7 +111,9 @@ namespace hyperonreco {
         //TH2D* h_Transform = nullptr;
         std::vector<HoughTransformPoint> Transform;
  
+        const int Multiplier = 20;
         TH2D* MakeConvHistogram(std::vector<HoughTransformPoint> transform,bool guasskernel) const;
+        TH2D* MakeConvHistogramDer(std::vector<HoughTransformPoint> transform,bool xy) const;
 
 
         ROOT::Math::Functor Func;
