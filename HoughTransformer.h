@@ -27,6 +27,29 @@
 
 namespace hyperonreco {
 
+  const double PI = 3.1415;
+
+  // 2D Gaussian of indep variables
+  inline double Gaus2D(double mu_x,double mu_y,double sd_x,double sd_y,double x,double y){
+    return (1.0/2/PI)/sqrt(sd_x*sd_y)*exp(-0.5*((mu_x-x)*(mu_x-x)/sd_x/sd_x + (mu_y-y)*(mu_y-y)/sd_y/sd_y));
+  }
+
+  inline double Gaus2D_GradX(double mu_x,double mu_y,double sd_x,double sd_y,double x,double y){
+    return (1.0/2/PI)/sqrt(sd_x*sd_y)*(x-mu_x)/sd_x/sd_x*exp(-0.5*((mu_x-x)*(mu_x-x)/sd_x/sd_x + (mu_y-y)*(mu_y-y)/sd_y/sd_y));
+  }
+   
+  inline double Gaus2D_GradY(double mu_x,double mu_y,double sd_x,double sd_y,double x,double y){
+    return (1.0/2/PI)/sqrt(sd_x*sd_y)*(y-mu_y)/sd_y/sd_y*exp(-0.5*((mu_x-x)*(mu_x-x)/sd_x/sd_x + (mu_y-y)*(mu_y-y)/sd_y/sd_y));
+  }
+
+  inline double Gaus2D_GradX2(double mu_x,double mu_y,double sd_x,double sd_y,double x,double y){
+    return (1.0/2/PI)/sqrt(sd_x*sd_y)*(mu_x*mu_x - 2*mu_x*x - sd_x*sd_x + x*x)/sd_x/sd_x/sd_x/sd_x*exp(-0.5*((mu_x-x)*(mu_x-x)/sd_x/sd_x + (mu_y-y)*(mu_y-y)/sd_y/sd_y));
+  }
+
+  inline double Gaus2D_GradY2(double mu_x,double mu_y,double sd_x,double sd_y,double x,double y){
+    return (1.0/2/PI)/sqrt(sd_x*sd_y)*(mu_y*mu_y - 2*mu_y*y - sd_y*sd_y + y*y)/sd_y/sd_y/sd_y/sd_y*exp(-0.5*((mu_x-x)*(mu_x-x)/sd_x/sd_x + (mu_y-y)*(mu_y-y)/sd_y/sd_y));
+  }
+
   class HoughTransformer {
 
       public:
@@ -34,7 +57,6 @@ namespace hyperonreco {
         HoughTransformer(std::vector<HitLite> hits,int plane,double origin_channel,double origin_tick,bool draw=false);
         ~HoughTransformer();
         void MakeTransform2();
-        std::vector<HoughTransformPoint> FindPeaks() const;
         std::vector<HoughTransformPoint> FindPeaks2() const;
         void FindPeaks3() const;
         void DrawFits();
@@ -71,8 +93,8 @@ namespace hyperonreco {
         const double Origin_Tick;
 
         // Tuning parameters
-        double RBinSize = 1.0;
-        double ThetaBinSize = 0.1;
+        double RBinSize = 2.0;
+        double ThetaBinSize = 0.2;
         int PeakSize = 1;
         int PointGrouping = 4;
         int ConvFloor = 2;
@@ -85,8 +107,11 @@ namespace hyperonreco {
         double Dist(const HitLite& hit,double r, double theta) const;
         std::tuple<double,double,double> GetLine(const std::vector<HitLite>& hits);
 
-        TH2D* h_Transform = nullptr;
+        //TH2D* h_Transform = nullptr;
         std::vector<HoughTransformPoint> Transform;
+ 
+        TH2D* MakeConvHistogram(std::vector<HoughTransformPoint> transform,bool guasskernel) const;
+
 
         ROOT::Math::Functor Func;
         std::unique_ptr<ROOT::Math::Minimizer> Minimizer = nullptr;
