@@ -133,6 +133,7 @@ void HoughTransformer::SetVerbosity(int verb){
 
 void HoughTransformer::SubtractOffset(std::vector<HitLite>& hits) const {
 
+
   for(HitLite& hit : hits){
 
     hit.Channel = hit.Channel - Origin_Channel;
@@ -231,6 +232,8 @@ std::vector<HitLite> HoughTransformer::FindNearestNeighbours(int point,const std
 
 void HoughTransformer::MakeTransform2(){
 
+  RemoveVerticalLines(); 
+
   Transform.clear();
   std::vector<std::pair<double,double>> transform;
 
@@ -242,7 +245,7 @@ void HoughTransformer::MakeTransform2(){
 
     std::tuple<double,double,double> fit = GetLine(nearest_neighbors);
 
-    if(std::get<2>(fit) > Chi2Cut) continue; 
+    //if(std::get<2>(fit) > Chi2Cut) continue; 
 
     std::pair<double,double> line = std::make_pair(std::get<0>(fit),std::get<1>(fit));
 
@@ -308,6 +311,7 @@ void HoughTransformer::MakeTransform2(){
     Transform.push_back(HoughTransformPoint(Plane,line.first,line.second)); 
     Transform.back().Height++;
     Transform.back().Hits = nearest_neighbors;;
+    Transform.back().Chi2 = std::get<2>(fit); 
 
   }
 
@@ -379,11 +383,6 @@ std::vector<HoughTransformPoint> HoughTransformer::FindPeaks2() const {
     h_Transform_Conv->Draw("colz");
     h_Transform_Conv->SetStats(0);
     c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Conv_Tune_" + std::to_string(TuneID) + ".png").c_str());
-    c->Clear();
-
-    h_Transform_Conv->Draw("ARR");
-    h_Transform_Conv->SetStats(0);
-    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Arr_Tune_" + std::to_string(TuneID) + ".png").c_str());
     c->Clear();
 
     delete c;
@@ -596,7 +595,11 @@ void HoughTransformer::DrawFits(){
 
 std::vector<HoughTransformPoint> HoughTransformer::MakeClusters() const {
 
-  std::vector<HoughTransformPoint> peaks = FindPeaks2();
+  std::vector<HoughTransformPoint> peaks = FindPeaks3();
+
+  // If there are vertical line clusters, add those back in now
+  peaks.insert(peaks.end(),VerticalLines.begin(),VerticalLines.end());
+
 
   if(Draw){
 
@@ -618,8 +621,11 @@ std::vector<HoughTransformPoint> HoughTransformer::MakeClusters() const {
     int ctr=1;
     for(HoughTransformPoint& peak : peaks){
 
+      std::cout << "New cluster" << std::endl;
+
       std::vector<double> channels,ticks,widths;
       for(HitLite hit : peak.Hits){
+        //std::cout << hit.Channel << std::endl;
         channels.push_back(hit.Channel); 
         ticks.push_back(hit.Tick); 
         widths.push_back(hit.Width);
@@ -705,7 +711,9 @@ std::pair<double,double> HoughTransformer::GetPerformanceMetrics() const {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void HoughTransformer::FindPeaks3() const {
+std::vector<HoughTransformPoint> HoughTransformer::FindPeaks3() const {
+
+  std::vector<HoughTransformPoint> results;
 
   std::vector<double> r,theta;
   for(HoughTransformPoint point : Transform){
@@ -749,6 +757,7 @@ void HoughTransformer::FindPeaks3() const {
  */
 
   TH2D* h_Transform_Conv = MakeConvHistogram(Transform,true); 
+
   if(Draw && Verbosity > 0){
     TCanvas* c = new TCanvas("c","c");
     h_Transform_Conv->Draw("colz");
@@ -758,6 +767,8 @@ void HoughTransformer::FindPeaks3() const {
     c->Clear();
     delete c;
   }
+
+
 /*
   TH2D* h_Transform_2Der_X = (TH2D*)h_Transform_Conv->Clone("h_Transform_2Der_X");
   TH2D* h_Transform_2Der_Y = (TH2D*)h_Transform_Conv->Clone("h_Transform_2Der_Y");
@@ -859,23 +870,23 @@ void HoughTransformer::FindPeaks3() const {
     delete c;
   }
 
-  TH2D* h_Transform_Grad_SignChange = (TH2D*)h_Transform_Conv->Clone("h_TransformGrad_SignChange");
-  TH2D* h_Transform_Grad_X_SignChange = (TH2D*)h_Transform_Conv->Clone("h_TransformGrad_X_SignChange");
-  TH2D* h_Transform_Grad_Y_SignChange = (TH2D*)h_Transform_Conv->Clone("h_TransformGrad_Y_SignChange");
+  TH2D* h_Transform_Grad_SignChange = (TH2D*)h_Transform_Grad_X->Clone("h_TransformGrad_SignChange");
+  TH2D* h_Transform_Grad_X_SignChange = (TH2D*)h_Transform_Grad_X->Clone("h_TransformGrad_X_SignChange");
+  TH2D* h_Transform_Grad_Y_SignChange = (TH2D*)h_Transform_Grad_X->Clone("h_TransformGrad_Y_SignChange");
   h_Transform_Grad_SignChange->Reset();
   h_Transform_Grad_X_SignChange->Reset();
   h_Transform_Grad_Y_SignChange->Reset();
 
-  double _EPSILON_ = 0.005/Multiplier/RBinSize;
+  double _EPSILON_ = 0.001/Multiplier/RBinSize;
 
   // Find bins in which the sign of the gradient changes - X
-  for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
+  for(int j=1;j<h_Transform_Grad_X->GetNbinsY()+1;j++){
     bool up = false;
     //std::cout << "Starting new group" << std::endl;
     //std::cout << "_EPSILON_=" << _EPSILON_ << std::endl;
-    for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
+    for(int i=1;i<h_Transform_Grad_X->GetNbinsX()+1;i++){
 
-      //std::cout << h_Transform_Conv->GetXaxis()->GetBinCenter(i) << "  " << h_Transform_Conv->GetYaxis()->GetBinCenter(j) << "   ";
+      //std::cout << h_Transform_Grad_X->GetXaxis()->GetBinCenter(i) << "  " << h_Transform_Grad_X->GetYaxis()->GetBinCenter(j) << "   ";
       //std::cout << h_Transform_Grad_X->GetBinContent(i-1,j) << "  ";
 
       if(abs(h_Transform_Grad_X->GetBinContent(i-1,j)) < _EPSILON_ && h_Transform_Grad_X->GetBinContent(i,j) > _EPSILON_ && !up){
@@ -904,14 +915,14 @@ void HoughTransformer::FindPeaks3() const {
     }
   }
 
-  _EPSILON_ = 0.005/Multiplier/ThetaBinSize;
+  _EPSILON_ = 0.001/Multiplier/ThetaBinSize;
 
   // Find bins in which the sign of the gradient changes - Y
-  for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
+  for(int i=1;i<h_Transform_Grad_X->GetNbinsX()+1;i++){
     bool up = false;
     //std::cout << "_EPSILON_=" << _EPSILON_ << std::endl;
     //std::cout << "Starting new group" << std::endl;
-    for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
+    for(int j=1;j<h_Transform_Grad_X->GetNbinsY()+1;j++){
 
       //std::cout << h_Transform_Grad_Y->GetBinContent(i,j-1) << "  " << h_Transform_Grad_Y->GetBinContent(i,j);
 
@@ -941,13 +952,27 @@ void HoughTransformer::FindPeaks3() const {
     }
   }
 
+  TH2D* h_Transform_Grad_SignChange_Flip = (TH2D*)h_Transform_Grad_SignChange->Clone("h_Transform_Grad_SignChange_Flip");
+  for(int i=1;i<h_Transform_Grad_X->GetNbinsX()+1;i++){
+    for(int j=1;j<h_Transform_Grad_X->GetNbinsY()+1;j++){
+      if(h_Transform_Grad_SignChange_Flip->GetBinContent(i,j) > 0) h_Transform_Grad_SignChange_Flip->SetBinContent(i,j,0);
+      else h_Transform_Grad_SignChange_Flip->SetBinContent(i,j,1);
+    }
+  }
+
   if(Draw && Verbosity > 0){
-    TCanvas* c = new TCanvas("c","c");
+    TCanvas* c = new TCanvas("c","c",2000,2000);
 
     h_Transform_Grad_SignChange->Draw("colz");
     h_Transform_Grad_SignChange->SetStats(0);
     g->Draw("P same");
     c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Conv_Grad_SignChange_Tune_" + std::to_string(TuneID) + ".png").c_str());
+    c->Clear();
+
+    h_Transform_Grad_SignChange_Flip->Draw("colz");
+    h_Transform_Grad_SignChange_Flip->SetStats(0);
+    g->Draw("P same");
+    c->Print(("Plots/Event_" + RSE + "/Event_" + RSEP + "_HT_Conv_Grad_SignChange_Flip_Tune_" + std::to_string(TuneID) + ".png").c_str());
     c->Clear();
 
     h_Transform_Grad_X_SignChange->Draw("colz");
@@ -966,11 +991,177 @@ void HoughTransformer::FindPeaks3() const {
 
   }
 
+  std::vector<std::vector<int>> bins_x,bins_y;
+
+  //std::cout << "Histogram bins = " << h_Transform_Conv->GetNbinsX()*h_Transform_Conv->GetNbinsY() << std::endl;
+
+  // peak height of Guassian kernel from single point
+  double min_height = 2*Gaus2D(0,0,RBinSize,ThetaBinSize,0,0)/Transform.size(); 
+  //std::cout << "min_height=" << min_height << std::endl;
+
+  // Now find the islands
+  while(true){   
+
+    int max_bin_r = -1;
+    int max_bin_theta = -1;
+    double max_bin_content = 0.0;
+
+    // Find the highest bin in the histogram
+    for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
+      for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
+        if(h_Transform_Conv->GetBinContent(i,j) > max_bin_content){
+          max_bin_r = i;
+          max_bin_theta = j;
+          max_bin_content = h_Transform_Conv->GetBinContent(i,j);
+        }
+      }
+    } 
+
+    //std::cout << "max_bin_r=" << max_bin_r << "  max_bin_theta=" << max_bin_theta << "   max_bin_content=" << max_bin_content << std::endl;
+
+    if(max_bin_content < min_height) break;
+
+    bins_x.push_back(std::vector<int>());
+    bins_y.push_back(std::vector<int>());
+
+    results.push_back(HoughTransformPoint(Plane,max_bin_r,max_bin_theta)); 
+
+    // Find contiguous regions of filled bins
+    std::vector<std::pair<int,int>> BinsAddedLastPass;
+    std::vector<std::pair<int,int>> BinsAddedThisPass;
+
+    BinsAddedLastPass.push_back(std::make_pair(max_bin_r,max_bin_theta));
+
+    int nfills_this_pass = 1;
+    while(nfills_this_pass > 0){
+
+      nfills_this_pass = 0;
+      BinsAddedThisPass.clear();
+
+      // iterate over the bins added in the last pass, check the bins that neighbour those
+      for(size_t i_b=0;i_b<BinsAddedLastPass.size();i_b++){
+
+        int current_bin_x = BinsAddedLastPass.at(i_b).first;
+        int current_bin_y = BinsAddedLastPass.at(i_b).second;
+        h_Transform_Grad_SignChange_Flip->SetBinContent(current_bin_x,current_bin_y,0);
+        h_Transform_Conv->SetBinContent(current_bin_x,current_bin_y,0);
+
+        // look at each of the four bins surrounding the current one
+        // if bin is occupied, and not already part of the cluster, add it
+
+        if(h_Transform_Grad_SignChange_Flip->GetBinContent(current_bin_x+1,current_bin_y) > 0){ 
+          BinsAddedThisPass.push_back(std::make_pair(current_bin_x+1,current_bin_y));               
+          bins_x.back().push_back(current_bin_x+1);   
+          bins_y.back().push_back(current_bin_y);
+          h_Transform_Conv->SetBinContent(current_bin_x+1,current_bin_y,0);
+          h_Transform_Grad_SignChange_Flip->SetBinContent(current_bin_x+1,current_bin_y,0);
+          nfills_this_pass++;   
+        }
+
+        if(h_Transform_Grad_SignChange_Flip->GetBinContent(current_bin_x-1,current_bin_y) > 0){ 
+          BinsAddedThisPass.push_back(std::make_pair(current_bin_x-1,current_bin_y));               
+          bins_x.back().push_back(current_bin_x-1);   
+          bins_y.back().push_back(current_bin_y);
+          h_Transform_Conv->SetBinContent(current_bin_x-1,current_bin_y,0);
+          h_Transform_Grad_SignChange_Flip->SetBinContent(current_bin_x-1,current_bin_y,0);
+          nfills_this_pass++;   
+        }
+
+        if(h_Transform_Grad_SignChange_Flip->GetBinContent(current_bin_x,current_bin_y+1) > 0){ 
+          BinsAddedThisPass.push_back(std::make_pair(current_bin_x,current_bin_y+1));               
+          bins_x.back().push_back(current_bin_x);   
+          bins_y.back().push_back(current_bin_y+1);
+          h_Transform_Conv->SetBinContent(current_bin_x,current_bin_y+1,0);
+          h_Transform_Grad_SignChange_Flip->SetBinContent(current_bin_x,current_bin_y+1,0);
+          nfills_this_pass++;   
+        }
+
+        if(h_Transform_Grad_SignChange_Flip->GetBinContent(current_bin_x,current_bin_y-1) > 0){ 
+          BinsAddedThisPass.push_back(std::make_pair(current_bin_x,current_bin_y-1));               
+          bins_x.back().push_back(current_bin_x);   
+          bins_y.back().push_back(current_bin_y-1);
+          h_Transform_Conv->SetBinContent(current_bin_x,current_bin_y-1,0);
+          h_Transform_Grad_SignChange_Flip->SetBinContent(current_bin_x,current_bin_y-1,0);
+          nfills_this_pass++;   
+        }
+
+        // If the bin is the first/last in theta space, then the last/first bin in theta space also neighbours it as theta
+        // has to wrap around
+        /*
+        for(int i=-1;i<=1;i++){
+          if(current_bin_y == h_Transform_Conv->GetNbinsY() && h_Transform_Conv->GetBinContent(current_bin_x+i,1) > 2){
+            BinsAddedThisPass.push_back(std::make_pair(current_bin_x+i,1));               
+            bins_x.back().push_back(current_bin_x+i);   
+            bins_y.back().push_back(1);
+            h_Transform_Conv->SetBinContent(current_bin_x+i,1,1);
+            nfills_this_pass++;   
+          } 
+          if(current_bin_y == 1 && h_Transform_Conv->GetBinContent(current_bin_x+i,h_Transform_Conv->GetNbinsY()) > 2){
+            BinsAddedThisPass.push_back(std::make_pair(current_bin_x+i,h_Transform_Conv->GetNbinsY()));               
+            bins_x.back().push_back(current_bin_x+i);   
+            bins_y.back().push_back(h_Transform_Conv->GetNbinsY());
+            h_Transform_Conv->SetBinContent(current_bin_x+i,h_Transform_Conv->GetNbinsY(),1);
+            nfills_this_pass++;   
+          } 
+        }
+        */
+
+      }
+
+      //std::cout << BinsAddedThisPass.size() << " " << nfills_this_pass << std::endl;
+
+      BinsAddedLastPass = BinsAddedThisPass;
+
+    }
+
+  }
+
+  // For each peak, find all the points inside it, and get their corresponding hits
+  
+  std::vector<int> used_hits;
+  for(HoughTransformPoint point : Transform){
+
+    double r = point.R;
+    double theta = point.Theta;
+    int bin_x = h_Transform_Conv->GetXaxis()->FindBin(r);
+    int bin_y = h_Transform_Conv->GetYaxis()->FindBin(theta);
+
+    for(size_t p=0;p<bins_x.size();p++){
+      if(std::find(bins_x.at(p).begin(),bins_x.at(p).end(),bin_x) != bins_x.at(p).end() &&
+          std::find(bins_y.at(p).begin(),bins_y.at(p).end(),bin_y) != bins_y.at(p).end()){
+        for(HitLite hit : point.Hits){
+          if(std::find(used_hits.begin(),used_hits.end(),hit.Number) != used_hits.end()){
+            //std::cout << "Hit already used in another cluster" << std::endl;
+          }
+          else {
+            results.at(p).Hits.push_back(hit);
+            used_hits.push_back(hit.Number);
+          }
+        }
+        break; 
+      }
+    }
+
+  } 
+
+  // Remove any peaks with not hits
+  // TODO: Why are there some peaks with no hits?
+  std::vector<HoughTransformPoint> results_tmp;  
+  for(HoughTransformPoint result : results)
+      if(result.Hits.size()) results_tmp.push_back(result);
+  results = results_tmp;
+
+  for(HoughTransformPoint& result : results){
+    result.RemoveDuplicateHits();
+  } 
+
   delete h_Transform_Conv;
   delete h_Transform_Grad_X;
   delete h_Transform_Grad_Y;
   delete h_Transform_Grad_X_SignChange;
   delete h_Transform_Grad_Y_SignChange;
+
+  return results;
   
 }
 
@@ -1010,6 +1201,7 @@ TH2D* HoughTransformer::MakeConvHistogram(std::vector<HoughTransformPoint> trans
     for(HoughTransformPoint point : transform){
       const double r = point.R;
       const double theta = point.Theta;
+      //double width = 1+2*point.Chi2;
   //    std::cout << r << "  " << theta << std::endl;
       for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
         for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
@@ -1046,6 +1238,7 @@ TH2D* HoughTransformer::MakeConvHistogramDer(std::vector<HoughTransformPoint> tr
   for(HoughTransformPoint point : transform){
     const double r = point.R;
     const double theta = point.Theta;
+    //double width = 1+2*point.Chi2;
     //    std::cout << r << "  " << theta << std::endl;
     for(int i=1;i<h_Transform_Conv->GetNbinsX()+1;i++){
       for(int j=1;j<h_Transform_Conv->GetNbinsY()+1;j++){
@@ -1063,6 +1256,53 @@ TH2D* HoughTransformer::MakeConvHistogramDer(std::vector<HoughTransformPoint> tr
 
   return h_Transform_Conv;
 
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void HoughTransformer::RemoveVerticalLines(){
+
+  std::map<double,std::vector<HitLite>> m_ch_ticks; 
+  for(HitLite hit : Hits){
+    //std::cout << hit.Channel << "   " << hit.Tick << std::endl; 
+    if(m_ch_ticks.find(hit.Channel) == m_ch_ticks.end()) m_ch_ticks[hit.Channel] = {hit};
+    else m_ch_ticks[hit.Channel].push_back(hit);
+  } 
+
+  std::map<double,std::vector<HitLite>>::iterator it;
+  std::vector<size_t> bad_hits;
+  for(it = m_ch_ticks.begin();it != m_ch_ticks.end();it++){
+    std::sort(it->second.begin(),it->second.end(),SortHits);
+    //std::cout << it->first << "  " << it->second.size() << std::endl;
+    if(it->second.size() > 3){
+      //std::cout << "Possible vertical line:" << std::endl;
+      for(size_t i=0;i<it->second.size()-1;i++){
+        //std::cout << it->second.at(i+1).Tick - it->second.at(i).Tick << std::endl;
+        if(it->second.at(i+1).Tick - it->second.at(i).Tick <= 18/TickPerWire){
+          bad_hits.push_back(it->second.at(i).Number);
+          if(i == it->second.size()-2) bad_hits.push_back(it->second.at(i+1).Number); 
+        }
+      }        
+    }
+  }
+
+  // TODO: atm can only clump all vertical hits into one cluster - should implement
+  // something that can handle multiple
+  VerticalLines.resize(1);
+
+  // erase the vertical lines from the hit vector - write new alg for clustering them tomorrow
+  for(size_t i=0;i<bad_hits.size();i++){
+    for(size_t i_h=0;i_h<Hits.size();i_h++)
+      if(bad_hits.at(i) == Hits.at(i_h).Number){
+        VerticalLines.back().Hits.push_back(Hits.at(i_h));
+        Hits.erase(Hits.begin()+i_h);
+        break;
+      }
+  } 
+
+//  for(HoughTransformPoint& point : VerticalLines)
+//    SubtractOffset(point.Hits);
+ 
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////

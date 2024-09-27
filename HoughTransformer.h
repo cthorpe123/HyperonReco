@@ -51,6 +51,11 @@ namespace hyperonreco {
     return (1.0/2/PI)/sqrt(sd_x*sd_y)*(mu_y*mu_y - 2*mu_y*y - sd_y*sd_y + y*y)/sd_y/sd_y/sd_y/sd_y*exp(-0.5*((mu_x-x)*(mu_x-x)/sd_x/sd_x + (mu_y-y)*(mu_y-y)/sd_y/sd_y));
   }
 */
+
+  inline bool SortHits(HitLite a,HitLite b){
+    return a.Tick < b.Tick;
+  }
+
   class HoughTransformer {
 
       public:
@@ -59,7 +64,7 @@ namespace hyperonreco {
         ~HoughTransformer();
         void MakeTransform2();
         std::vector<HoughTransformPoint> FindPeaks2() const;
-        void FindPeaks3() const;
+        std::vector<HoughTransformPoint> FindPeaks3() const;
         void DrawFits();
         void SubtractOffset(std::vector<HitLite>& hits) const;
         void RestoreOffset(std::vector<HitLite>& hits) const;
@@ -111,13 +116,16 @@ namespace hyperonreco {
         //TH2D* h_Transform = nullptr;
         std::vector<HoughTransformPoint> Transform;
  
-        const int Multiplier = 20;
+        const int Multiplier = 3;
         TH2D* MakeConvHistogram(std::vector<HoughTransformPoint> transform,bool guasskernel) const;
         TH2D* MakeConvHistogramDer(std::vector<HoughTransformPoint> transform,bool xy) const;
 
 
         ROOT::Math::Functor Func;
         std::unique_ptr<ROOT::Math::Minimizer> Minimizer = nullptr;
+        
+        void RemoveVerticalLines();
+        std::vector<HoughTransformPoint> VerticalLines; 
 
   };
 

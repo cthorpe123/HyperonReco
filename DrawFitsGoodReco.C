@@ -33,7 +33,7 @@ void DrawFitsGoodReco(){
 
   // Select the event we want to analyse
   int ievent=0;
-  while(ievent<E.GetNEvents() && ievent < 10){
+  while(ievent<E.GetNEvents()){
     Event e = E.GetEvent(ievent);
 
     //std::cout << ievent << "/" << E.GetNEvents() << std::endl;
@@ -79,9 +79,12 @@ void DrawFitsGoodReco(){
       HoughTransformer transformer(hits.at(i_pl),i_pl,vertex_ch_tick.first,vertex_ch_tick.second,true);
       transformer.SetVerbosity(1);
       transformer.SetEvent(e.run,e.subrun,e.event);   
+      transformer.SetPointGrouping(4);
       transformer.MakeTransform2();
+      transformer.SetRBinSize(0.4);
+      transformer.SetThetaBinSize(0.03);
       std::vector<HoughTransformPoint> cluster = transformer.MakeClusters();
-      transformer.FindPeaks3();
+      //transformer.FindPeaks3();
       //clusters.at(i_pl) = cluster;
 
     } // i_pl

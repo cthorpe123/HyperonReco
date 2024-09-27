@@ -54,6 +54,8 @@ namespace hyperonreco {
 
   struct HoughTransformPoint {
 
+   HoughTransformPoint(){} 
+
     HoughTransformPoint(int plane,double r,double theta) :
       Plane(plane),R(r),Theta(theta)
     {}
@@ -62,6 +64,7 @@ namespace hyperonreco {
     double R;
     double Theta;
     int Height;
+    double Chi2;
     std::vector<HitLite> Hits;
 
 
